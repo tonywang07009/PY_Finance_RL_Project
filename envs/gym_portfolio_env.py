@@ -25,6 +25,7 @@ class PortfolioEnvConfig:
     tickers: List[str]
     init_wealth: float = 1.0
     wealth_norm_factor: float = 100.0
+    use_slm: bool = False
 
 
 class SimplePortfolioEnv(BaseEnv):
@@ -41,7 +42,7 @@ class SimplePortfolioEnv(BaseEnv):
         self.num_assets = len(self.tickers)
         self.init_wealth = config.init_wealth
 
-        self.returns = self.price_df.pct_change().fillna(0.0 , method=None)
+        self.returns = self.price_df.pct_change().fillna(0.0)
         self.max_step = len(self.price_df) - 1
 
         self.equal_w = np.array(
@@ -56,6 +57,14 @@ class SimplePortfolioEnv(BaseEnv):
         self.current_step = 0
         self.current_wealth = self.init_wealth
         self.peak_wealth = self.init_wealth
+        
+        if len(self.price_df) == 0:     
+            raise ValueError(
+                "price_df is empty in SimplePortfolioEnv.reset(). "
+                "Check TRAIN_START / TRAIN_END and ticker data availability."
+            )
+
+
         first_price = (
             self.price_df.iloc[self.current_step][self.tickers]
             .values.astype(float)
@@ -93,19 +102,27 @@ def ema(series: np.ndarray, span: int) -> float:
     return ema_val
 
 
-#--- for agent env 
+# --- for agent env
 class GymPortfolioEnv(gym.Env, BaseEnv):
     """DDPG-ready Gymnasium wrapper around SimplePortfolioEnv."""
     metadata = {"render.modes": ["human"]}
 
-    def __init__(self, price_df: pd.DataFrame, config: PortfolioEnvConfig):
+    def __init__(
+        self,
+        price_df: pd.DataFrame,
+        config: PortfolioEnvConfig,
+        use_slm: bool = False,
+    ):
         super().__init__()
 
         missing_tickers: set[str] = set(config.tickers) - set(price_df.columns)
         if missing_tickers:
             raise ValueError(f"Missing tickers in price_df: {missing_tickers}")
 
-        self.core_env = SimplePortfolioEnv(price_df=price_df, config=config)
+        self.use_slm: bool = use_slm
+        self.core_env: SimplePortfolioEnv = SimplePortfolioEnv(price_df=price_df, config=config)
+        self.current_sent_score: float = 0.0
+
         self.config = config
         self.num_assets = self.core_env.num_assets
 
@@ -130,19 +147,19 @@ class GymPortfolioEnv(gym.Env, BaseEnv):
         self.macd_window_size = 20
         self.portfolio_wealth_history = []
         self.macd_window = deque(maxlen=self.macd_window_size)
-        obs_dim = (
-            self.state_window_size  
-            + self.macd_window_size 
-            + self.bb_window_size  
-            + 1
-            )
-           
-
-        # observation = [過去 K 天 portfolio returns, normalized wealth]
+        
+        self.obs_dim = (
+            self.state_window_size
+            + self.macd_window_size
+            + self.bb_window_size
+            + 1      # norm_wealth
+            + 1      # slm_sent_score
+        )
+        # observation = [過去 K 天 portfolio returns, MACD, BB, normalized wealth, SLM score]
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(obs_dim,),
+            shape=(self.obs_dim,),
             dtype=np.float32,
         )
 
@@ -175,17 +192,17 @@ class GymPortfolioEnv(gym.Env, BaseEnv):
         self.bb_dev_window.clear()
         self.portfolio_wealth_history = [self.core_env.current_wealth]
         self.macd_window.clear()
-        # 初始 state：returns 窗口全 0 + normalized wealth
-        obs_dim = (
-            self.state_window_size
-            + self.macd_window_size
-            + self.bb_window_size
-            + 1
-        )
-        observation = np.zeros(obs_dim, dtype=np.float32)
-        observation[-1] = np.float32(
+
+        observation = np.zeros(self.obs_dim, dtype=np.float32)
+
+        norm_wealth = np.float32(
             self.core_env.current_wealth / self.config.wealth_norm_factor
         )
+        self.current_sent_score = 0.0
+
+        observation[-2] = norm_wealth
+        observation[-1] = np.float32(self.current_sent_score)
+
         info = {}
         return observation, info
 
@@ -255,12 +272,21 @@ class GymPortfolioEnv(gym.Env, BaseEnv):
         norm_wealth = np.float32(
             self.core_env.current_wealth / self.config.wealth_norm_factor
         )
+        # 決定這一步要用的情緒分數
+        if self.use_slm and hasattr(self, "sentiment_series"):
+            # 假設你的 sentiment_series index 跟 returns 的 index 對齊
+            current_date = self.core_env.returns.index[self.core_env.current_step]
+            sent_val = float(self.sentiment_series.get(current_date, 0.0))
+            self.current_sent_score = float(np.clip(sent_val, -1.0, 1.0))
+        else:
+            # offline 或沒有提供 series → 用 dummy 0
+            self.current_sent_score = 0.0
 
-        
+
         # observation = [過去 K 天 portfolio returns, normalized wealth]
         observation = np.concatenate(
-                    (state_ret_vec, macd_vec, bb_vec, [norm_wealth])
-                    ).astype(np.float32)
+            (state_ret_vec, macd_vec, bb_vec, [norm_wealth, self.current_sent_score])
+        ).astype(np.float32)
 
         # 4. reward 用的 rolling Sharpe-like
         self.returns_window.append(port_ret)
