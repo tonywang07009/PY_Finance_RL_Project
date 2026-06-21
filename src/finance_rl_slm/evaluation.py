@@ -54,10 +54,30 @@ def create_online_env(
 def load_online_model(
     model_path: str | Path,
     env: GymPortfolioEnv,
+    route_name: str = "online",
 ):
     """Load the trained DDPG model for online evaluation."""
     resolved_path = resolve_model_path(model_path)
-    return DDPG.load(str(resolved_path), env=env)
+    model = DDPG.load(str(resolved_path))
+    model_obs_dim = int(model.observation_space.shape[-1])
+    env_obs_dim = int(env.observation_space.shape[-1])
+
+    if model.action_space.shape != env.action_space.shape:
+        raise ValueError(
+            "Trained DDPG model action space does not match the online env. "
+            f"Model action space: {model.action_space}; env action space: {env.action_space}."
+        )
+
+    if model_obs_dim == env_obs_dim:
+        return model
+
+    raise ValueError(
+        f"{route_name} DDPG model observation space does not match the online env. "
+        f"Model observation dim: {model_obs_dim}; env observation dim: {env_obs_dim}. "
+        f"Loaded model path: {resolved_path}. "
+        "For SLM evaluation, train or provide a 62D `ddpg_portfolio_slm.zip` model. "
+        "Do not reuse the 61D `ddpg_portfolio_offline.zip` model for SLM decisions."
+    )
 
 
 def resolve_model_path(model_path: str | Path) -> Path:
@@ -144,6 +164,7 @@ def collect_online_logs(
                 "reward": reward,
                 "drawdown": info["drawdown"],
                 "action": action,
+                **({"sentiment": env.current_sent_score} if getattr(env, "use_slm", False) else {}),
             }
         )
 
@@ -262,6 +283,7 @@ def run_online_evaluation(
     profile_name: str = "ddpg_slm",
     show_plots: bool = True,
     debug_steps: int = 0,
+    model_path: str | Path | None = None,
 ) -> pd.DataFrame:
     """High-level online evaluation wrapper used by scripts and notebooks."""
     options = OnlineEvaluationConfig(
@@ -277,7 +299,11 @@ def run_online_evaluation(
     )
 
     env_online = create_online_env(price_df_online, sentiment_series, config)
-    model = load_online_model(config.model_path, env_online)
+    resolved_model_path = model_path or (
+        config.slm_model_path if sentiment_series is not None else config.model_path
+    )
+    route_name = "DDPG+SLM" if sentiment_series is not None else "Only-DDPG"
+    model = load_online_model(resolved_model_path, env_online, route_name=route_name)
 
     run_debug_steps(
         model,

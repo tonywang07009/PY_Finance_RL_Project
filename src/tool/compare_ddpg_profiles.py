@@ -8,11 +8,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 DEFAULT_START = "2026-01-01"
 DEFAULT_END = "2026-06-21"
 DEFAULT_PROFILE_DIR = Path("addenda/result_profile_comparse")
+DEFAULT_COMPARISON_PICTURE_DIR = Path("addenda/result_picture/comparison")
 REQUIRED_COLUMNS = ("wealth", "reward", "drawdown", "daily_return")
 
 
@@ -33,6 +35,10 @@ def profile_filename(profile_name: str, start_date: str = DEFAULT_START, end_dat
 
 def comparison_filename(start_date: str = DEFAULT_START, end_date: str = DEFAULT_END) -> str:
     return f"ddpg_vs_slm_comparison_{start_date}_{end_date}.csv"
+
+
+def comparison_plot_filename(start_date: str = DEFAULT_START, end_date: str = DEFAULT_END) -> str:
+    return f"reward_daily_return_difference_{start_date}_{end_date}.png"
 
 
 def default_profile_path(
@@ -113,6 +119,46 @@ def write_comparison(summary: pd.DataFrame, output_path: str | Path) -> Path:
     return path
 
 
+def plot_profile_differences(
+    only_ddpg: pd.DataFrame,
+    ddpg_slm: pd.DataFrame,
+    output_path: str | Path,
+) -> Path:
+    aligned = only_ddpg[["reward", "daily_return"]].join(
+        ddpg_slm[["reward", "daily_return"]],
+        how="inner",
+        lsuffix="_only_ddpg",
+        rsuffix="_ddpg_slm",
+    )
+    if aligned.empty:
+        raise ValueError("Cannot plot profile differences because the profile indexes do not overlap.")
+
+    reward_diff = aligned["reward_ddpg_slm"] - aligned["reward_only_ddpg"]
+    return_diff = aligned["daily_return_ddpg_slm"] - aligned["daily_return_only_ddpg"]
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True)
+    axes[0].plot(aligned.index, reward_diff, label="DDPG+SLM reward - Only-DDPG reward")
+    axes[0].axhline(0.0, color="black", linewidth=0.8)
+    axes[0].set_ylabel("Reward diff")
+    axes[0].legend()
+    axes[0].grid(True)
+
+    axes[1].plot(aligned.index, return_diff, label="DDPG+SLM daily_return - Only-DDPG daily_return")
+    axes[1].axhline(0.0, color="black", linewidth=0.8)
+    axes[1].set_ylabel("Daily return diff")
+    axes[1].set_xlabel("Date")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compare online result profiles for pure DDPG and DDPG+SLM.",
@@ -123,6 +169,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--only-ddpg-profile", type=Path)
     parser.add_argument("--ddpg-slm-profile", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--plot-output", type=Path)
     return parser.parse_args()
 
 
@@ -141,12 +188,17 @@ def main() -> Path:
         args.profile_dir,
     )
     output_path = args.output or args.profile_dir / comparison_filename(args.start_date, args.end_date)
+    plot_output_path = args.plot_output or (
+        DEFAULT_COMPARISON_PICTURE_DIR / comparison_plot_filename(args.start_date, args.end_date)
+    )
 
     only_profile = load_profile(only_path)
     slm_profile = load_profile(slm_path)
     summary = compare_profiles(only_profile, slm_profile)
     saved_path = write_comparison(summary, output_path)
+    plot_path = plot_profile_differences(only_profile, slm_profile, plot_output_path)
     print(f"saved comparison: {saved_path}")
+    print(f"saved comparison plot: {plot_path}")
     return saved_path
 
 

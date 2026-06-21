@@ -28,12 +28,13 @@ class ResultsAndDocsTests(unittest.TestCase):
             profile_dir / "ddpg_vs_slm_comparison_2026-01-01_2026-06-21.csv",
         ]
         expected_figures = [
-            picture_dir / "online_reward_only_ddpg_2026-01-01_2026-06-21.png",
-            picture_dir / "online_wealth_only_ddpg_2026-01-01_2026-06-21.png",
-            picture_dir / "online_daily_return_only_ddpg_2026-01-01_2026-06-21.png",
-            picture_dir / "online_reward_ddpg_slm_2026-01-01_2026-06-21.png",
-            picture_dir / "online_wealth_ddpg_slm_2026-01-01_2026-06-21.png",
-            picture_dir / "online_daily_return_ddpg_slm_2026-01-01_2026-06-21.png",
+            picture_dir / "only_ddpg" / "online_reward_only_ddpg_2026-01-01_2026-06-21.png",
+            picture_dir / "only_ddpg" / "online_wealth_only_ddpg_2026-01-01_2026-06-21.png",
+            picture_dir / "only_ddpg" / "online_daily_return_only_ddpg_2026-01-01_2026-06-21.png",
+            picture_dir / "with_slm" / "online_reward_ddpg_slm_2026-01-01_2026-06-21.png",
+            picture_dir / "with_slm" / "online_wealth_ddpg_slm_2026-01-01_2026-06-21.png",
+            picture_dir / "with_slm" / "online_daily_return_ddpg_slm_2026-01-01_2026-06-21.png",
+            picture_dir / "comparison" / "reward_daily_return_difference_2026-01-01_2026-06-21.png",
         ]
 
         for path in expected_profiles + expected_figures:
@@ -81,7 +82,7 @@ class ResultsAndDocsTests(unittest.TestCase):
             self.assertTrue(saved.loc[0, "action"].startswith("["))
 
     def test_compare_ddpg_profiles_writes_metric_difference(self) -> None:
-        from tool.compare_ddpg_profiles import compare_profiles, write_comparison
+        from tool.compare_ddpg_profiles import compare_profiles, plot_profile_differences, write_comparison
 
         only = pd.DataFrame(
             {
@@ -113,6 +114,12 @@ class ResultsAndDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output = write_comparison(summary, Path(tmpdir) / "comparison.csv")
             self.assertTrue(output.exists())
+            plot_output = plot_profile_differences(
+                only.set_index(pd.to_datetime(["2026-01-02", "2026-01-05", "2026-01-06"])),
+                slm.set_index(pd.to_datetime(["2026-01-02", "2026-01-05", "2026-01-06"])),
+                Path(tmpdir) / "difference.png",
+            )
+            self.assertTrue(plot_output.exists())
 
     def test_standardized_notebooks_have_notes_and_no_outputs(self) -> None:
         old_notebook = PROJECT_ROOT / "main" / "main_code.ipynb"

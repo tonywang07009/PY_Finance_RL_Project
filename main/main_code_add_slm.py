@@ -19,8 +19,12 @@ for path in (PROJECT_ROOT / "src", PROJECT_ROOT, PROJECT_ROOT / "src" / "FinRL")
         sys.path.insert(0, path_str)
 
 from finance_rl_slm.config import DEFAULT_CONFIG  # noqa: E402
-from finance_rl_slm.workflow import run_slm_online  # noqa: E402
+from finance_rl_slm.workflow import run_slm_online, train_slm_model_from_price_data  # noqa: E402
 
 
 if __name__ == "__main__":
-    run_slm_online(replace(DEFAULT_CONFIG, news_max_items=3))
+    config = replace(DEFAULT_CONFIG, news_max_items=3)
+    if "--train-slm" in sys.argv:
+        train_slm_model_from_price_data(config)
+    else:
+        run_slm_online(config)

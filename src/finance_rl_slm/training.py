@@ -30,28 +30,7 @@ def make_portfolio_config(
     )
 
 
-def train_offline_model(
-    price_df_train: pd.DataFrame,
-    price_df_valid: pd.DataFrame,
-    config: RunConfig = DEFAULT_CONFIG,
-) -> Any:
-    config_offline = make_portfolio_config(config, use_slm=False)
-    env_train = GymPortfolioEnv(price_df_train, config_offline, use_slm=False)
-    env_valid = GymPortfolioEnv(price_df_valid, config_offline, use_slm=False)
-
-    obs, info = env_train.reset()
-    print("obs shape after reset:", obs.shape)
-
-    for _ in range(5):
-        action = env_train.action_space.sample()
-        obs, reward, terminated, truncated, info = env_train.step(action)
-        print("obs shape in step:", obs.shape)
-        if terminated or truncated:
-            break
-
-    print("MACD window:", list(env_train.macd_window))
-    print("BB dev window:", list(env_train.bb_dev_window))
-
+def _make_ddpg(env_train: GymPortfolioEnv, config: RunConfig) -> DDPG:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     n_actions = env_train.action_space.shape[-1]
     action_noise = NormalActionNoise(
@@ -59,7 +38,7 @@ def train_offline_model(
         sigma=0.1 * np.ones(n_actions),
     )
 
-    model = DDPG(
+    return DDPG(
         "MlpPolicy",
         env_train,
         action_noise=action_noise,
@@ -73,9 +52,27 @@ def train_offline_model(
         device=device,
     )
 
-    model.learn(total_timesteps=config.total_timesteps)
-    model.save(config.model_path)
 
+def _print_env_probe(env_train: GymPortfolioEnv) -> None:
+    obs, info = env_train.reset()
+    print("obs shape after reset:", obs.shape)
+
+    for _ in range(5):
+        action = env_train.action_space.sample()
+        obs, reward, terminated, truncated, info = env_train.step(action)
+        print("obs shape in step:", obs.shape)
+        if terminated or truncated:
+            break
+
+    print("MACD window:", list(env_train.macd_window))
+    print("BB dev window:", list(env_train.bb_dev_window))
+
+
+def _validation_wealth_plot(
+    model: DDPG,
+    env_valid: GymPortfolioEnv,
+    price_df_valid: pd.DataFrame,
+) -> None:
     obs, info = env_valid.reset()
     done = False
     wealth_traj = [env_valid.core_env.current_wealth]
@@ -99,4 +96,52 @@ def train_offline_model(
     plt.legend()
     plt.show()
 
+
+def train_offline_model(
+    price_df_train: pd.DataFrame,
+    price_df_valid: pd.DataFrame,
+    config: RunConfig = DEFAULT_CONFIG,
+) -> Any:
+    config_offline = make_portfolio_config(config, use_slm=False)
+    env_train = GymPortfolioEnv(price_df_train, config_offline, use_slm=False)
+    env_valid = GymPortfolioEnv(price_df_valid, config_offline, use_slm=False)
+
+    _print_env_probe(env_train)
+    model = _make_ddpg(env_train, config)
+    model.learn(total_timesteps=config.total_timesteps)
+    model.save(config.model_path)
+    _validation_wealth_plot(model, env_valid, price_df_valid)
+
+    return model
+
+
+def _align_sentiment(
+    sentiment_series: pd.Series,
+    price_index: pd.Index,
+) -> pd.Series:
+    series = pd.Series(sentiment_series).copy()
+    series.index = pd.to_datetime(series.index)
+    aligned = series.sort_index().reindex(pd.to_datetime(price_index)).ffill().fillna(0.0)
+    aligned.index = price_index
+    return aligned.astype(float).clip(-1.0, 1.0)
+
+
+def train_slm_aware_model(
+    price_df_train: pd.DataFrame,
+    price_df_valid: pd.DataFrame,
+    sentiment_train: pd.Series,
+    sentiment_valid: pd.Series,
+    config: RunConfig = DEFAULT_CONFIG,
+) -> Any:
+    config_slm = make_portfolio_config(config, use_slm=True)
+    env_train = GymPortfolioEnv(price_df_train, config_slm, use_slm=True)
+    env_valid = GymPortfolioEnv(price_df_valid, config_slm, use_slm=True)
+    env_train.set_sentiment_series(_align_sentiment(sentiment_train, price_df_train.index))
+    env_valid.set_sentiment_series(_align_sentiment(sentiment_valid, price_df_valid.index))
+
+    _print_env_probe(env_train)
+    model = _make_ddpg(env_train, config)
+    model.learn(total_timesteps=config.total_timesteps)
+    model.save(config.slm_model_path)
+    _validation_wealth_plot(model, env_valid, price_df_valid)
     return model

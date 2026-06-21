@@ -4,7 +4,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import gymnasium as gym
 import numpy as np
 import pandas as pd
 
@@ -117,6 +119,49 @@ class OnlineEnvApiTests(unittest.TestCase):
             self.assertFalse((Path(tmpdir) / "online_reward_SLM.png").exists())
             self.assertFalse((Path(tmpdir) / "online_wealth_SLM.png").exists())
             self.assertFalse((Path(tmpdir) / "online_daily_return_SLM.png").exists())
+
+    def test_slm_route_rejects_61d_price_only_model(self) -> None:
+        from envs.gym_portfolio_env import GymPortfolioEnv, PortfolioEnvConfig
+        from finance_rl_slm.evaluation import load_online_model
+
+        class FakeModel:
+            observation_space = gym.spaces.Box(-np.inf, np.inf, shape=(61,), dtype=np.float32)
+            action_space = gym.spaces.Box(0.0, 1.0, shape=(5,), dtype=np.float32)
+
+        tickers = ["IBM", "NVDA", "GM", "BLK", "COST"]
+        env = GymPortfolioEnv(
+            make_price_df(),
+            PortfolioEnvConfig(tickers=tickers, use_slm=True),
+            use_slm=True,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "fake_slm_model.zip"
+            model_path.write_text("fake")
+            with patch("finance_rl_slm.evaluation.DDPG.load", return_value=FakeModel()):
+                with self.assertRaisesRegex(ValueError, "ddpg_portfolio_slm"):
+                    load_online_model(model_path, env, route_name="DDPG+SLM")
+
+    def test_slm_route_accepts_62d_model(self) -> None:
+        from envs.gym_portfolio_env import GymPortfolioEnv, PortfolioEnvConfig
+        from finance_rl_slm.evaluation import load_online_model
+
+        class FakeModel:
+            observation_space = gym.spaces.Box(-np.inf, np.inf, shape=(62,), dtype=np.float32)
+            action_space = gym.spaces.Box(0.0, 1.0, shape=(5,), dtype=np.float32)
+
+        tickers = ["IBM", "NVDA", "GM", "BLK", "COST"]
+        env = GymPortfolioEnv(
+            make_price_df(),
+            PortfolioEnvConfig(tickers=tickers, use_slm=True),
+            use_slm=True,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "fake_slm_model.zip"
+            model_path.write_text("fake")
+            with patch("finance_rl_slm.evaluation.DDPG.load", return_value=FakeModel()):
+                self.assertIsInstance(load_online_model(model_path, env, route_name="DDPG+SLM"), FakeModel)
 
 
 if __name__ == "__main__":

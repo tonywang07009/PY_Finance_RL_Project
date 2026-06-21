@@ -13,7 +13,12 @@ from .evaluation import run_online_evaluation
 from .news import build_weekly_market_sentiment, weekly_to_daily_sentiment
 from .paths import FINRL_ROOT, PROJECT_ROOT, ensure_project_paths
 from .sentiment import GraniteSentimentAnalyzer
-from .training import train_offline_model
+from .synthetic_sentiment import (
+    build_or_load_balanced_sentiment,
+    business_dates_for_training_config,
+    sentiment_frame_to_daily_market_series,
+)
+from .training import train_offline_model, train_slm_aware_model
 
 
 @dataclass
@@ -21,18 +26,19 @@ class PriceSplits:
     train: pd.DataFrame
     valid: pd.DataFrame
 
-
+# The data source check function
 def print_runtime_context(config: RunConfig = DEFAULT_CONFIG) -> None:
     ensure_project_paths()
     print("PROJECT_ROOT:", PROJECT_ROOT)
     print("FINRL_ROOT:", FINRL_ROOT)
     print("RSS_URLS:", dict(config.rss_urls))
 
-
+# For SLM to build the week sentiment function
 def build_sentiment_inputs(
     config: RunConfig = DEFAULT_CONFIG,
     analyzer: GraniteSentimentAnalyzer | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
+
     df_all_news, weekly, weekly_mkt = build_weekly_market_sentiment(
         max_items=config.news_max_items,
         config=config,
@@ -43,7 +49,7 @@ def build_sentiment_inputs(
     print("weekly_mkt range:", weekly_mkt.index.min(), "->", weekly_mkt.index.max())
     return df_all_news, weekly, weekly_mkt
 
-
+# The loading history data
 def load_price_data(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
     price_df = download_price_df(
         config.start_date,
@@ -55,11 +61,38 @@ def load_price_data(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
     print(price_df.head())
     return price_df
 
+# QC function for check data long
+def _validate_split(
+    name: str,
+    split: pd.DataFrame,
+    start: str,
+    end: str,
+    source: pd.DataFrame,
+) -> None:
+    # if data frame over 2 , pass , can analzy
+    if len(split) >= 2:
+        return
 
+    if source.empty:
+        available = "no available rows"
+    else: # saw the begin time to end , check the data is correct
+        available = f"{source.index.min()} -> {source.index.max()}"
+
+    # The unexcepet message
+    raise ValueError(
+        f"{name} price split has {len(split)} rows, but at least 2 rows are required. "
+        f"Requested {name} range: {start} -> {end}. "
+        f"Available price_df range: {available}. "
+        "Adjust RunConfig date fields or use the online-only workflow with an existing model."
+    )
+
+
+# The data prepossing
 def split_price_data(
     price_df: pd.DataFrame,
     config: RunConfig = DEFAULT_CONFIG,
 ) -> PriceSplits:
+
     price_df_train = price_df.loc[config.train_start : config.train_end].copy()
     price_df_valid = price_df.loc[config.valid_start : config.valid_end].copy()
     _validate_split(
@@ -78,29 +111,6 @@ def split_price_data(
     )
     print(f"price_df_train: {price_df_train.shape}, price_df_valid: {price_df_valid.shape}")
     return PriceSplits(train=price_df_train, valid=price_df_valid)
-
-
-def _validate_split(
-    name: str,
-    split: pd.DataFrame,
-    start: str,
-    end: str,
-    source: pd.DataFrame,
-) -> None:
-    if len(split) >= 2:
-        return
-
-    if source.empty:
-        available = "no available rows"
-    else:
-        available = f"{source.index.min()} -> {source.index.max()}"
-
-    raise ValueError(
-        f"{name} price split has {len(split)} rows, but at least 2 rows are required. "
-        f"Requested {name} range: {start} -> {end}. "
-        f"Available price_df range: {available}. "
-        "Adjust RunConfig date fields or use the online-only workflow with an existing model."
-    )
 
 
 def load_online_price_data(
@@ -141,8 +151,54 @@ def result_picture_path(config: RunConfig = DEFAULT_CONFIG) -> Path:
     return _project_output_path(config.result_picture_dir)
 
 
+def only_ddpg_picture_path(config: RunConfig = DEFAULT_CONFIG) -> Path:
+    return _project_output_path(Path(config.result_picture_dir) / "only_ddpg")
+
+
+def with_slm_picture_path(config: RunConfig = DEFAULT_CONFIG) -> Path:
+    return _project_output_path(Path(config.result_picture_dir) / "with_slm")
+
+
+def comparison_picture_path(config: RunConfig = DEFAULT_CONFIG) -> Path:
+    return _project_output_path(Path(config.result_picture_dir) / "comparison")
+
+
 def result_profile_path(config: RunConfig = DEFAULT_CONFIG) -> Path:
     return _project_output_path(config.result_profile_dir)
+
+
+def synthetic_sentiment_dir_path(config: RunConfig = DEFAULT_CONFIG) -> Path:
+    return _project_output_path(config.synthetic_sentiment_dir)
+
+
+def build_historical_synthetic_sentiment(
+    config: RunConfig = DEFAULT_CONFIG,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    dates = business_dates_for_training_config(config)
+    df, output_path = build_or_load_balanced_sentiment(
+        config=config,
+        dates=dates,
+        refresh=refresh,
+    )
+    print("synthetic sentiment path:", output_path)
+    print("synthetic sentiment shape:", df.shape)
+    print("synthetic sentiment label counts:")
+    print(df["sent_label"].value_counts().sort_index())
+    return df
+
+
+def build_historical_market_sentiment(
+    price_df: pd.DataFrame,
+    config: RunConfig = DEFAULT_CONFIG,
+    refresh: bool = False,
+) -> pd.Series:
+    sentiment_df = build_historical_synthetic_sentiment(config, refresh=refresh)
+    sentiment_series = sentiment_frame_to_daily_market_series(sentiment_df, price_df.index)
+    print("historical sentiment range:", sentiment_series.index.min(), "->", sentiment_series.index.max())
+    print(sentiment_series.head())
+    print(sentiment_series.tail())
+    return sentiment_series
 
 
 def run_only_ddpg_online(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
@@ -156,7 +212,7 @@ def run_only_ddpg_online(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
         online_end_str=online_end_str,
         config=config,
         save_plots=True,
-        plot_dir=result_picture_path(config),
+        plot_dir=only_ddpg_picture_path(config),
         save_profile=True,
         profile_dir=result_profile_path(config),
         profile_name="only_ddpg",
@@ -171,6 +227,7 @@ def run_slm_online(
     print_runtime_context(config)
 
     df_all_news, weekly, weekly_mkt = build_sentiment_inputs(config, analyzer=analyzer)
+
     online_end_str = config.online_end
     price_df_online = load_online_price_data(online_end_str, config)
     sentiment_series = build_daily_sentiment(weekly_mkt, price_df_online)
@@ -181,7 +238,7 @@ def run_slm_online(
         online_end_str,
         config,
         save_plots=True,
-        plot_dir=result_picture_path(config),
+        plot_dir=with_slm_picture_path(config),
         save_profile=True,
         profile_dir=result_profile_path(config),
         profile_name="ddpg_slm",
@@ -207,7 +264,7 @@ def run_only_ddpg_main(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
         online_end_str=online_end_str,
         config=config,
         save_plots=True,
-        plot_dir=result_picture_path(config),
+        plot_dir=only_ddpg_picture_path(config),
         save_profile=True,
         profile_dir=result_profile_path(config),
         profile_name="only_ddpg",
@@ -222,7 +279,14 @@ def run_slm_main(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
     plot_normalized_prices(price_df, config)
 
     splits = split_price_data(price_df, config)
-    train_offline_model(splits.train, splits.valid, config)
+    sentiment_series = build_historical_market_sentiment(price_df, config)
+    train_slm_aware_model(
+        splits.train,
+        splits.valid,
+        sentiment_series.loc[splits.train.index],
+        sentiment_series.loc[splits.valid.index],
+        config,
+    )
 
     online_end_str = config.online_end
     price_df_online = load_online_price_data(online_end_str, config)
@@ -234,10 +298,26 @@ def run_slm_main(config: RunConfig = DEFAULT_CONFIG) -> pd.DataFrame:
         online_end_str,
         config,
         save_plots=True,
-        plot_dir=result_picture_path(config),
+        plot_dir=with_slm_picture_path(config),
         save_profile=True,
         profile_dir=result_profile_path(config),
         profile_name="ddpg_slm",
+    )
+
+
+def train_slm_model_from_price_data(config: RunConfig = DEFAULT_CONFIG) -> object:
+    print_runtime_context(config)
+    price_df = load_price_data(config)
+    plot_normalized_prices(price_df, config)
+
+    splits = split_price_data(price_df, config)
+    sentiment_series = build_historical_market_sentiment(price_df, config)
+    return train_slm_aware_model(
+        splits.train,
+        splits.valid,
+        sentiment_series.loc[splits.train.index],
+        sentiment_series.loc[splits.valid.index],
+        config,
     )
 
 

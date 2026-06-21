@@ -2,38 +2,59 @@
 
 ## What Is Here
 
-- This folder contains lightweight unittest coverage for the local project workflow.
+- This folder contains local `unittest` coverage for the project-owned workflow.
 
-- It does not own the embedded FinRL upstream test suite.
+- It does not replace the embedded FinRL upstream test suite.
 
-## When To Use It
-
-- Use this folder when changing:
-  - portfolio environment behavior,
-  - online evaluation helpers,
-  - result output contracts,
+- The goal is practical safety:
+  - import safety,
+  - environment shape safety,
   - notebook/script call safety,
-  - documentation routing.
+  - result artifact routing,
+  - SLM-aware 62D routing.
 
-## Important Files
+## 1. Test Flow
 
-- `test_finance_rl_slm.py`
-  - Sentiment helpers and package import safety.
+```mermaid
+%% {init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+%% The specy elk to daraw enegine
+flowchart TB
+    SRC[__src/finance_rl_slm__<br/>workflow / training / evaluation]
+    ENV[__envs/__<br/>GymPortfolioEnv]
+    MAIN[__main/__<br/>py and ipynb entrypoints]
+    ART[__addenda/__<br/>profiles and figures]
+    TST[__tests/__<br/>unit and smoke checks]
+    PASS[__Pass Condition__<br/>no call error in main py/ipynb]
 
-- `test_online_env_api.py`
-  - Environment API behavior.
+    SRC --> TST
+    ENV --> TST
+    MAIN --> TST
+    ART --> TST
+    TST --> PASS
+```
 
-- `test_results_and_docs.py`
-  - Result artifacts, notebook structure, and comparison tool behavior.
+## 2. API Overview
+
+| Function | Role |
+|---|---|
+| `FinanceRlSlmTests` | Test package import, sentiment parsing, and basic helper behavior. |
+| `MainCallSafetyDocRouterTests` | Test main scripts, notebooks, split validation, and README router links. |
+| `ResultsAndDocsTests` | Test result folders, comparison outputs, and documentation files. |
+| `SlmAwareRoutingTests` | Test 61D/62D model routing, synthetic sentiment balance, and SLM image routing. |
+| `ConstantModel` | Small fake model used for online environment tests. |
+| `make_price_df()` | Build a small deterministic price dataframe for tests. |
+| `OnlineEnvApiTests` | Test online environment creation, action handling, model path errors, and profile output. |
 
 ## Common Checks
 
 - Run all local tests:
 
   ```bash
-  python -B -m unittest discover -s tests -p 'test_*.py' -v
+  rtk python -B -m unittest discover -s tests -p 'test_*.py' -v
   ```
 
-- Keep tests lightweight.
-  - Do not require full DDPG training.
-  - Avoid network-dependent assertions unless explicitly testing an online run.
+- Keep tests lightweight:
+  - do not require full DDPG training,
+  - avoid network-only assertions,
+  - prefer small deterministic dataframes,
+  - verify output paths when changing artifact routing.

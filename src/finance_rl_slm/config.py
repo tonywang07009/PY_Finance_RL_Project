@@ -21,12 +21,14 @@ class RunConfig:
     online_start: str = "2026-01-01"
     online_end: str = "2026-06-21"
     model_path: str = "ddpg_portfolio_offline"
+    slm_model_path: str = "ddpg_portfolio_slm"
     total_timesteps: int = 1_000_000
     init_wealth: float = 1.0
     wealth_norm_factor: float = 100.0
     news_max_items: int = 50
     result_picture_dir: str = "addenda/result_picture"
     result_profile_dir: str = "addenda/result_profile_comparse"
+    synthetic_sentiment_dir: str = "addenda/synthetic_sentiment"
 
     @property
     def ticker_list(self) -> list[str]:
