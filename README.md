@@ -40,6 +40,18 @@ dimension. If the SLM route loads the wrong model, it fails clearly.
 
 - [Tests](tests/README.md)
   - Local unit tests, smoke checks, and documentation routing checks.
+ 
+## 0. install The  Fin_RL libary
+```bash
+  cd src
+  git clone https://github.com/AI4Finance-Foundation/FinRL.git
+  cd FinRL
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install -e .
+```
+
+source: https://github.com/AI4Finance-Foundation/FinRL
 
 ## 1. Quick Start
 
