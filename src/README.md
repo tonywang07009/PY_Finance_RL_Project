@@ -137,13 +137,14 @@ flowchart TB
 - Run local tests:
 
   ```bash
-  rtk python -B -m unittest discover -s tests -p 'test_*.py' -v
+  python -B -m unittest discover -s tests -p 'test_*.py' -v
   ```
 
 - Run the comparison tool:
 
   ```bash
-  rtk python src/tool/compare_ddpg_profiles.py
+  python src/tool/compare_ddpg_profiles.py
+  
   ```
 
 - Important rule:
