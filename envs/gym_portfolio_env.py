@@ -129,13 +129,15 @@ class GymPortfolioEnv(gym.Env, BaseEnv):
         self.macd_window = deque(maxlen=self.macd_window_size)
         self.portfolio_wealth_history: list[float] = []
 
-        self.obs_dim = (
+        base_dim = (
             self.state_window_size
             + self.macd_window_size
             + self.bb_window_size
-            + 1
-            + 1
+            + 1 #wealth
         )
+
+        self.obs_dim = base_dim + (1 if self.use_slm else 0)        
+
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -172,8 +174,13 @@ class GymPortfolioEnv(gym.Env, BaseEnv):
         self._reset_windows()
 
         observation = np.zeros(self.obs_dim, dtype=np.float32)
-        observation[-2] = self._normalized_wealth()
-        observation[-1] = np.float32(self.current_sent_score)
+        
+        if self.use_slm:
+            observation[-2] = self._normalized_wealth()
+            observation[-1] = np.float32(self.current_sent_score)
+        else:
+            observation[-1] = np.float32(self.current_sent_score)
+
         return observation, {}
 
     def step(self, action: np.ndarray):
@@ -187,9 +194,14 @@ class GymPortfolioEnv(gym.Env, BaseEnv):
         norm_wealth = self._normalized_wealth()
         self.current_sent_score = self._lookup_sentiment_score()
 
-        observation = np.concatenate(
-            (state_ret_vec, macd_vec, bb_vec, [norm_wealth, self.current_sent_score])
-        ).astype(np.float32)
+        if self.use_slm :
+            observation = np.concatenate(
+                (state_ret_vec, macd_vec, bb_vec, [norm_wealth, self.current_sent_score])
+            ).astype(np.float32)
+        else:
+            observation = np.concatenate(
+                (state_ret_vec, macd_vec, bb_vec, [norm_wealth])
+            ).astype(np.float32)
 
         reward, drawdown = self._reward_and_drawdown(port_ret)
         terminated = self.core_env.current_step >= self.core_env.max_step

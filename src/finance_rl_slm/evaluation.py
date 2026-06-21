@@ -13,6 +13,7 @@ import pandas as pd
 from stable_baselines3 import DDPG
 
 from .config import DEFAULT_CONFIG, RunConfig
+from .paths import PROJECT_ROOT
 from .training import GymPortfolioEnv, make_portfolio_config
 
 
@@ -55,7 +56,45 @@ def load_online_model(
     env: GymPortfolioEnv,
 ):
     """Load the trained DDPG model for online evaluation."""
-    return DDPG.load(str(model_path), env=env)
+    resolved_path = resolve_model_path(model_path)
+    return DDPG.load(str(resolved_path), env=env)
+
+
+def resolve_model_path(model_path: str | Path) -> Path:
+    """Resolve a model path, accepting either the base name or `.zip` file."""
+    path = Path(model_path)
+    candidates: list[Path] = []
+
+    if path.is_absolute():
+        candidates.append(path)
+        if path.suffix != ".zip":
+            candidates.append(path.with_suffix(".zip"))
+    else:
+        candidates.extend(
+            [
+                Path.cwd() / path,
+                PROJECT_ROOT / path,
+            ]
+        )
+        if path.suffix != ".zip":
+            candidates.extend(
+                [
+                    (Path.cwd() / path).with_suffix(".zip"),
+                    (PROJECT_ROOT / path).with_suffix(".zip"),
+                ]
+            )
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    expected = candidates[0]
+    raise FileNotFoundError(
+        "Trained DDPG model file was not found. "
+        f"Expected model path like '{expected}' or '{expected.with_suffix('.zip')}'. "
+        "Run the optional offline training cell/script first, or set RunConfig.model_path "
+        "to an existing trained model."
+    )
 
 
 def run_debug_steps(

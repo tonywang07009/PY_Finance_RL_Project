@@ -6,10 +6,20 @@
 # In[1]:
 
 
+from pathlib import Path
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+for path in (PROJECT_ROOT / "src", PROJECT_ROOT, PROJECT_ROOT / "src" / "FinRL"):
+    path_str = str(path)
+    if path.exists() and path_str not in sys.path:
+        sys.path.insert(0, path_str)
+
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader 
 import pandas as pd
 import matplotlib.pyplot as plt
-get_ipython().run_line_magic('matplotlib', 'inline')
+if "get_ipython" in globals():
+    get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # # Step 2 choose your stock
@@ -535,4 +545,3 @@ while not done:
     wealth_traj.append(info["wealth"])
 
     done = terminated or truncated
-

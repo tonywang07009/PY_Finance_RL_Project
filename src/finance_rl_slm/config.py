@@ -12,12 +12,12 @@ class RunConfig:
 
     model_id: str = "ibm-granite/granite-4.1-8b"
     tickers: tuple[str, ...] = ("IBM", "NVDA", "GM", "BLK", "COST")
-    start_date: str = "2005-01-01"
+    start_date: str = "2010-11-18"
     end_date: str = "2025-01-01"
-    train_start: str = "2005-01-01"
-    train_end: str = "2005-12-31"
+    train_start: str = "2011-01-01"
+    train_end: str = "2015-12-31"
     valid_start: str = "2016-01-01"
-    valid_end: str = "2020-12-31"
+    valid_end: str = "2025-12-31"
     online_start: str = "2026-01-01"
     online_end: str = "2026-06-21"
     model_path: str = "ddpg_portfolio_offline"

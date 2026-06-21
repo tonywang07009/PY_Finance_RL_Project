@@ -15,6 +15,23 @@ as a weekly news-sentiment feature. The goal is to explore whether coarse, low-f
 signals can improve the behaviour of a long-horizon RL agent, but this part should be treated as
 an experimental add-on, not the default recommended setup.
 
+## Document Router
+
+- [Source Modules](src/README.md)
+  - Project-owned workflow package, embedded FinRL code, and comparison tools.
+
+- [Environment API](envs/README.md)
+  - Portfolio environment, observations, actions, reward, and SLM sentiment injection.
+
+- [Result Addenda](addenda/README.md)
+  - Generated figures, online profile CSV files, and comparison outputs.
+
+- [Exploratory Model Notes](modle/README.md)
+  - Earlier exploratory notebook/script material.
+
+- [Tests](tests/README.md)
+  - Local unit tests, smoke checks, and documentation routing checks.
+
 ## 1. Quick Start
 
 ### 1.1 Recommended: Pure DDPG Pipeline
@@ -27,8 +44,8 @@ This is the **recommended default** for most users and experiments.
    - Install FinRL and project dependencies:
 
      ```bash
-     rtk python -m pip install -r src/FinRL/requirements.txt
-     rtk python -m pip install -e src/FinRL
+     python -m pip install -r src/FinRL/requirements.txt
+     python -m pip install -e src/FinRL
      ```
 
 2. **Open the pure DDPG notebook**
@@ -49,16 +66,18 @@ This is the **recommended default** for most users and experiments.
      - `online_start = "2026-01-01"`
      - `online_end = "2026-06-21"`
 
-4. **Run offline training and validation**
+4. **Run online evaluation**
 
    ```bash
-   rtk python main/main_code_only_ddpg.py
+   python main/main_code_only_ddpg.py
    ```
 
-   - Stage 1: download historical prices with `YahooDownloader`.
+   - Stage 1: download 2026 online prices with `YahooDownloader`.
    - Stage 2: build `GymPortfolioEnv` with `use_slm = False`.
-   - Stage 3: train a DDPG agent and save it to `ddpg_portfolio_offline`.
-   - Stage 4: run online evaluation without sentiment.
+   - Stage 3: load the existing `ddpg_portfolio_offline.zip`.
+   - Stage 4: save online profile CSV and result figures.
+
+   Offline training is available in the notebook as an optional guarded cell.
 
 5. **Inspect pure DDPG results**
 
@@ -93,7 +112,7 @@ online evaluation.
 3. **Run online evaluation with SLM**
 
    ```bash
-   rtk python main/main_code_add_slm.py
+   python main/main_code_add_slm.py
    ```
 
    - `GymPortfolioEnv` reads `sentiment_series[current_date]`.
@@ -114,7 +133,7 @@ online evaluation.
 After both profile CSV files exist, run:
 
 ```bash
-rtk python src/tool/compare_ddpg_profiles.py
+python src/tool/compare_ddpg_profiles.py
 ```
 
 The comparison CSV will be written to:
