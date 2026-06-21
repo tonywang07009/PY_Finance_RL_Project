@@ -1,0 +1,13 @@
+
+#The agent_doc
+AGENTS.md
+openspec/
+.codex/
+
+
+
+# The picture 
+*.jpg
+
+# picture_jpg git 
+!patrick_Bateman.jpg
