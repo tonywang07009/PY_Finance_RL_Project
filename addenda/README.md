@@ -43,10 +43,13 @@ flowchart TB
 |---|---|
 | `result_picture/only_ddpg/` | Store plots produced by the 61D Only-DDPG online route. |
 | `result_picture/with_slm/` | Store plots produced by the 62D DDPG+SLM online route. |
-| `result_picture/comparison/` | Store comparison plots between reward and daily return. |
+| `result_picture/comparison/` | Store comparison plots for reward, daily return, normal distribution, and boxplot. |
 | `result_profile_comparse/only_ddpg_online_profile_2026-01-01_2026-06-21.csv` | Store step-level online profile for Only-DDPG. |
 | `result_profile_comparse/ddpg_slm_online_profile_2026-01-01_2026-06-21.csv` | Store step-level online profile for DDPG+SLM. |
 | `result_profile_comparse/ddpg_vs_slm_comparison_2026-01-01_2026-06-21.csv` | Store mean return, standard deviation, and reward comparison summary. |
+| `result_picture/comparison/daily_return_overlay_2026-01-01_2026-06-21.png` | Store both model daily returns in one figure with a shared y-axis. |
+| `result_picture/comparison/daily_return_normal_distribution_2026-01-01_2026-06-21.png` | Store overlaid normal curves with a shared mean. |
+| `result_picture/comparison/daily_return_boxplot_2026-01-01_2026-06-21.png` | Store both model daily-return boxplots in one figure. |
 | `synthetic_sentiment/balanced_rss_sentiment_2011-01-01_2025-12-31.csv` | Store balanced synthetic sentiment used for 62D SLM-aware training. |
 
 ## Common Checks

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DDPG Model Explanation Dashboard</title>
+  <style>
+    :root {
+      --bg: #050608;
+      --panel: #101418;
+      --panel-2: #151b21;
+      --line: #2e3a42;
+      --text: #d7e0e6;
+      --muted: #7f8e99;
+      --accent: #f5c542;
+      --pos: #36d17c;
+      --neg: #ff5c5c;
+      --blue: #58a6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      letter-spacing: 0;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding: 18px 24px;
+      background: #080b0f;
+    }
+    h1, h2, h3 { margin: 0; font-weight: 700; }
+    h1 { color: var(--accent); font-size: 26px; }
+    h2 { color: var(--blue); font-size: 18px; margin-bottom: 14px; }
+    h3 { color: var(--accent); font-size: 15px; margin-bottom: 10px; }
+    main { padding: 20px 24px 32px; }
+    .terminal-line {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .card, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 14px;
+    }
+    .card { min-height: 210px; }
+    .kicker {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .big {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 30px;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .muted { color: var(--muted); }
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 7px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .section { margin-top: 20px; }
+    .diff {
+      background: var(--panel-2);
+      border-left: 4px solid var(--accent);
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-family: Consolas, Monaco, monospace;
+    }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin-bottom: 8px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DDPG MODEL EXPLANATION DASHBOARD</h1>
+    <div class="terminal-line">DATA: result_profile_comparse | CAPITAL: 100,000.00 USD</div>
+  </header>
+  <main>
+    <div class="grid">
+      
+            <section class="card">
+              <div class="kicker">Only-DDPG</div>
+              <div class="big neg">-4,607.35 USD</div>
+              <div class="muted">Profit / Loss</div>
+              <table>
+                <tr><th>Final Value</th><td>95,392.65 USD</td></tr>
+                <tr><th>Cumulative Return</th><td>-4.61%</td></tr>
+                <tr><th>Max Drawdown</th><td class="neg">21.82%</td></tr>
+              </table>
+            </section>
+            
+
+            <section class="card">
+              <div class="kicker">DDPG+SLM</div>
+              <div class="big pos">219.64 USD</div>
+              <div class="muted">Profit / Loss</div>
+              <table>
+                <tr><th>Final Value</th><td>100,219.64 USD</td></tr>
+                <tr><th>Cumulative Return</th><td>0.22%</td></tr>
+                <tr><th>Max Drawdown</th><td class="neg">13.77%</td></tr>
+              </table>
+            </section>
+            
+    </div>
+
+    <div class="diff">
+      DDPG+SLM minus Only-DDPG profit/loss:
+      <span class="pos">4,826.99 USD</span>
+    </div>
+
+    <section class="section panel">
+      <h2>Capital and Profit / Loss</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Initial Capital</th>
+            <th>Final Value</th>
+            <th>Profit / Loss</th>
+            <th>Cum Return</th>
+            <th>Mean Daily Ret</th>
+            <th>Max Drawdown</th>
+            <th>Avg Turnover</th>
+            <th>Top Ticker</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td>Only-DDPG</td>
+              <td>100,000.00 USD</td>
+              <td>95,392.65 USD</td>
+              <td class="neg">-4,607.35 USD</td>
+              <td class="neg">-4.61%</td>
+              <td class="neg">-0.03%</td>
+              <td class="neg">21.82%</td>
+              <td>47.60%</td>
+              <td>IBM</td>
+            </tr>
+            
+
+            <tr>
+              <td>DDPG+SLM</td>
+              <td>100,000.00 USD</td>
+              <td>100,219.64 USD</td>
+              <td class="pos">219.64 USD</td>
+              <td class="pos">0.22%</td>
+              <td class="neg">-0.00%</td>
+              <td class="neg">13.77%</td>
+              <td>12.69%</td>
+              <td>NVDA</td>
+            </tr>
+            </tbody>
+      </table>
+    </section>
+
+    <section class="section panel">
+      <h2>Average Portfolio Weights</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Only-DDPG</th>
+            <th>DDPG+SLM</th>
+          </tr>
+        </thead>
+        <tbody><tr><td>IBM</td><td>31.78%</td><td>17.66%</td></tr>
+<tr><td>NVDA</td><td>17.41%</td><td>25.43%</td></tr>
+<tr><td>GM</td><td>20.89%</td><td>20.94%</td></tr>
+<tr><td>BLK</td><td>12.15%</td><td>15.72%</td></tr>
+<tr><td>COST</td><td>17.77%</td><td>20.25%</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Investment Strategy Analysis</h2>
+      <div class="grid">
+        
+            <section class="panel">
+              <h3>Only-DDPG Decision Notes</h3>
+              <ul><li>Only-DDPG ended with a loss of -4,607.35 USD.</li><li>The largest average allocation was IBM.</li><li>Average turnover was 47.60%, showing how much the allocation changed per step.</li><li>Max drawdown was 21.82%, which is the largest drop from a previous peak.</li></ul>
+            </section>
+            
+
+            <section class="panel">
+              <h3>DDPG+SLM Decision Notes</h3>
+              <ul><li>DDPG+SLM ended with a profit of 219.64 USD.</li><li>The largest average allocation was NVDA.</li><li>Average turnover was 12.69%, showing how much the allocation changed per step.</li><li>Max drawdown was 13.77%, which is the largest drop from a previous peak.</li><li>Average SLM sentiment score during the run was 0.0097.</li></ul>
+            </section>
+            
+      </div>
+    </section>
+  </main>
+</body>
+</html>

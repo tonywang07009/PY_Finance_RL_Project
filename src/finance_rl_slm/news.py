@@ -12,12 +12,15 @@ from .config import DEFAULT_CONFIG, RunConfig
 from .sentiment import GraniteSentimentAnalyzer, analyze_sentiment
 
 
+# The news data preprosseing
 def fetch_yahoo_news_texts(rss_url: str, max_items: int = 50) -> list[dict[str, Any]]:
     """Fetch Yahoo Finance RSS items as text/published dictionaries."""
     feed = feedparser.parse(rss_url)
     rows: list[dict[str, Any]] = []
 
+    # The news handdle workflow
     for entry in feed.entries[:max_items]:
+
         title = entry.get("title", "")
         summary = entry.get("summary", "")
         text = f"{title}\n{summary}".strip()
@@ -25,6 +28,7 @@ def fetch_yahoo_news_texts(rss_url: str, max_items: int = 50) -> list[dict[str, 
 
         if published:
             dt = pd.to_datetime(published, errors="coerce", utc=True)
+            # The date fetaure extend out
             if pd.notna(dt):
                 dt = dt.tz_convert(None)
         else:
@@ -34,7 +38,7 @@ def fetch_yahoo_news_texts(rss_url: str, max_items: int = 50) -> list[dict[str, 
 
     return rows
 
-
+# Get the news , and used the NLP catch emo
 def analyze_news_feed(
     rss_url: str,
     ticker: str,
@@ -45,6 +49,7 @@ def analyze_news_feed(
     rows = fetch_yahoo_news_texts(rss_url, max_items=max_items)
     records: list[dict[str, Any]] = []
 
+    # The used emo analzy data flow
     for row in rows:
         text = row["text"]
         dt = row["published"]
@@ -66,9 +71,10 @@ def analyze_news_feed(
         records,
         columns=["ticker", "published", "text", "sent_label", "sent_conf"],
     )
-    return df.dropna(subset=["published"])
+    return df.dropna(subset=["published"]) # clear the nan value
 
 
+# the emo score
 def label_to_score(label: str) -> int:
     mapping = {
         "positive": 1,
@@ -78,6 +84,7 @@ def label_to_score(label: str) -> int:
     }
     return mapping.get(str(label).lower().strip(), 0)
 
+# intrgrade the market layer
 
 def build_weekly_market_sentiment(
     max_items: int | None = None,
@@ -85,6 +92,7 @@ def build_weekly_market_sentiment(
     analyzer: GraniteSentimentAnalyzer | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """Build news-level, ticker-week, and market-week sentiment tables."""
+
     all_records = []
     item_limit = config.news_max_items if max_items is None else max_items
 
@@ -105,6 +113,7 @@ def build_weekly_market_sentiment(
         )
 
     if df_all_news.empty:
+
         weekly = pd.DataFrame(columns=["ticker", "week", "sent_score"])
         weekly_mkt = pd.Series(dtype=float, name="sent_score")
         weekly_mkt.index = pd.to_datetime(weekly_mkt.index)
@@ -116,6 +125,7 @@ def build_weekly_market_sentiment(
     df_all_news["published"] = pd.to_datetime(df_all_news["published"])
     df_all_news["week"] = df_all_news["published"].dt.to_period("W-MON").dt.start_time
 
+    # The week mean value
     weekly = (
         df_all_news.groupby(["ticker", "week"])["sent_score_raw"]
         .mean()
@@ -124,19 +134,21 @@ def build_weekly_market_sentiment(
 
     weekly_mkt = weekly.groupby("week")["sent_score"].mean().sort_index()
     weekly_mkt.index = pd.to_datetime(weekly_mkt.index)
-
+    # The weekly sort data handle
     return df_all_news, weekly, weekly_mkt
 
-
+# weekly data realigment the week for date
 def weekly_to_daily_sentiment(weekly_mkt: pd.Series, price_df: pd.DataFrame) -> pd.Series:
+
     idx = price_df.index
     daily = pd.Series(index=idx, dtype=float)
 
     for week_start, score in weekly_mkt.items():
+
         week_start = pd.to_datetime(week_start)
-        week_end = week_start + pd.Timedelta(days=6)
-        mask = (idx >= week_start) & (idx <= week_end)
-        daily.loc[mask] = score
+        week_end = week_start + pd.Timedelta(days=6) # example : "01-01" + 6 = "01-07"
+        mask = (idx >= week_start) & (idx <= week_end) # The get the mask in idex data time
+        daily.loc[mask] = score # The same range into the same emo score
 
     daily = daily.ffill().fillna(0.0)
     return daily.clip(-1.0, 1.0)

@@ -20,7 +20,7 @@ from .training import GymPortfolioEnv, make_portfolio_config
 class PredictModel(Protocol):
     def predict(self, obs, deterministic: bool = True): ...
 
-
+# The exp condition can't change
 @dataclass(frozen=True)
 class OnlineEvaluationConfig:
     """Runtime options for online evaluation."""
@@ -36,7 +36,7 @@ class OnlineEvaluationConfig:
     profile_dir: str | Path = DEFAULT_CONFIG.result_profile_dir
     show_plots: bool = True
 
-
+# set the online env function
 def create_online_env(
     price_df_online: pd.DataFrame,
     sentiment_series: pd.Series | None,
@@ -46,11 +46,12 @@ def create_online_env(
     use_slm = sentiment_series is not None
     config_online = make_portfolio_config(config, use_slm=use_slm)
     env_online = GymPortfolioEnv(price_df_online, config_online, use_slm=use_slm)
+
     if sentiment_series is not None:
         env_online.set_sentiment_series(sentiment_series)
     return env_online
 
-
+# The load_ddpg zip
 def load_online_model(
     model_path: str | Path,
     env: GymPortfolioEnv,
@@ -79,11 +80,11 @@ def load_online_model(
         "Do not reuse the 61D `ddpg_portfolio_offline.zip` model for SLM decisions."
     )
 
-
+# The role find function
 def resolve_model_path(model_path: str | Path) -> Path:
     """Resolve a model path, accepting either the base name or `.zip` file."""
     path = Path(model_path)
-    candidates: list[Path] = []
+    candidates: list[Path] = [] # The path colletion
 
     if path.is_absolute():
         candidates.append(path)
@@ -109,6 +110,7 @@ def resolve_model_path(model_path: str | Path) -> Path:
             return candidate
 
     expected = candidates[0]
+
     raise FileNotFoundError(
         "Trained DDPG model file was not found. "
         f"Expected model path like '{expected}' or '{expected.with_suffix('.zip')}'. "
@@ -131,9 +133,12 @@ def run_debug_steps(
     print("initial obs last 2 (wealth, slm):", obs[-2:])
 
     for _ in range(debug_steps):
+
         action, _ = model.predict(obs, deterministic=deterministic)
+
         obs, reward, terminated, truncated, info = env.step(action)
-        print("step obs last 2 (wealth, slm):", obs[-2:])
+
+        print("step obs last 2 (wealth, slm):", obs[-2:]) # only saw the emo and money
         if terminated or truncated:
             break
 
@@ -194,7 +199,7 @@ def profile_filename(profile_name: str, online_start: str, online_end: str) -> s
 
 
 def _format_action_for_csv(value: Any) -> str:
-    arr = np.asarray(value, dtype=float).ravel()
+    arr = np.asarray(value, dtype=float).ravel()  # The transformer numpy array after used to vector csv
     return json.dumps(arr.tolist())
 
 

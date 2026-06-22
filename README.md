@@ -35,6 +35,9 @@ dimension. If the SLM route loads the wrong model, it fails clearly.
 - [Result Addenda](addenda/README.md)
   - Generated figures, online profile CSV files, synthetic sentiment CSV, and comparison outputs.
 
+- [Version Dashboard](version/README.md)
+  - Bloomberg-style model explanation dashboard for capital, profit/loss, and strategy analysis.
+
 - [Exploratory Model Notes](modle/README.md)
   - Earlier exploratory notebook/script material.
 
@@ -128,6 +131,28 @@ This writes:
 
 - `addenda/result_profile_comparse/ddpg_vs_slm_comparison_2026-01-01_2026-06-21.csv`
 - `addenda/result_picture/comparison/reward_daily_return_difference_2026-01-01_2026-06-21.png`
+- `addenda/result_picture/comparison/daily_return_overlay_2026-01-01_2026-06-21.png`
+- `addenda/result_picture/comparison/daily_return_normal_distribution_2026-01-01_2026-06-21.png`
+- `addenda/result_picture/comparison/daily_return_boxplot_2026-01-01_2026-06-21.png`
+
+It also refreshes both standalone daily-return plots with the same y-axis range:
+
+- `addenda/result_picture/only_ddpg/online_daily_return_only_ddpg_2026-01-01_2026-06-21.png`
+- `addenda/result_picture/with_slm/online_daily_return_ddpg_slm_2026-01-01_2026-06-21.png`
+
+### 1.5 Explain Both Models in a Local Dashboard
+
+```bash
+python version/run_model_report.py
+```
+
+This generates `version/model_report.html` and serves it on localhost.
+
+For report generation only:
+
+```bash
+python version/run_model_report.py --no-serve
+```
 
 ## 2. Current Data Flow
 

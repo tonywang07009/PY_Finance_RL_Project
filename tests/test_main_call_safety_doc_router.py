@@ -121,6 +121,7 @@ class MainCallSafetyDocRouterTests(unittest.TestCase):
             PROJECT_ROOT / "src" / "README.md",
             PROJECT_ROOT / "envs" / "README.md",
             PROJECT_ROOT / "addenda" / "README.md",
+            PROJECT_ROOT / "version" / "README.md",
             PROJECT_ROOT / "modle" / "README.md",
             PROJECT_ROOT / "tests" / "README.md",
         ]

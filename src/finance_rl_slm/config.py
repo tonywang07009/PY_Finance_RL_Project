@@ -34,6 +34,8 @@ class RunConfig:
     def ticker_list(self) -> list[str]:
         return list(self.tickers)
 
+    # next time call this function is used the
+    # RunConfig.rss_urls
     @property
     def rss_urls(self) -> Mapping[str, str]:
         return {

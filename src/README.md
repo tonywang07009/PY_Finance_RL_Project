@@ -123,14 +123,23 @@ flowchart TB
 | `compare_ddpg_profiles.profile_filename()` | Build comparison input profile names. |
 | `comparison_filename()` | Build comparison CSV filename. |
 | `comparison_plot_filename()` | Build comparison plot filename. |
+| `aligned_daily_return_plot_filename()` | Build the shared-y-axis daily-return overlay plot filename. |
+| `online_daily_return_plot_filename()` | Build the standard standalone daily-return plot filename. |
+| `distribution_plot_filename()` | Build the normal-distribution comparison plot filename. |
+| `box_plot_filename()` | Build the daily-return boxplot filename. |
 | `default_profile_path()` | Resolve the default path for one profile CSV. |
 | `load_profile()` | Load a profile CSV and validate required columns. |
 | `compute_profile_metrics()` | Compute mean return, reward, standard deviation, and total return. |
 | `compare_profiles()` | Compare Only-DDPG and DDPG+SLM profile metrics. |
 | `write_comparison()` | Write comparison table to CSV. |
+| `compute_shared_ylim()` | Build one y-axis range that covers both daily-return series. |
+| `plot_daily_return_overlay()` | Save Only-DDPG and DDPG+SLM daily returns in one shared-y-axis figure. |
+| `plot_aligned_individual_daily_returns()` | Refresh standalone Only-DDPG and DDPG+SLM daily-return plots with shared y-axis limits. |
+| `plot_profile_distribution()` | Save overlaid normal curves using one shared mean and each model's own standard deviation. |
+| `plot_profile_boxplot()` | Save one boxplot figure containing both model daily-return distributions. |
 | `plot_profile_differences()` | Save reward and daily-return difference plot. |
 | `parse_args()` | Parse command-line arguments for the comparison tool. |
-| `main()` | Run the comparison tool and return output path. |
+| `main()` | Run the comparison tool and create the CSV plus all comparison plots. |
 
 ## Common Checks
 
