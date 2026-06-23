@@ -13,8 +13,11 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE_DIR = PROJECT_ROOT / "addenda" / "result_profile_comparse"
+DEFAULT_BASELINE_DIR = PROJECT_ROOT / "addenda" / "result_base_line"
 DEFAULT_ONLY_DDPG_PROFILE = DEFAULT_PROFILE_DIR / "only_ddpg_online_profile_2026-01-01_2026-06-21.csv"
 DEFAULT_DDPG_SLM_PROFILE = DEFAULT_PROFILE_DIR / "ddpg_slm_online_profile_2026-01-01_2026-06-21.csv"
+DEFAULT_BUY_HOLD_PROFILE = DEFAULT_BASELINE_DIR / "buy_hold_online_profile_2026-01-01_2026-06-21.csv"
+DEFAULT_MARKOV_CHAIN_PROFILE = DEFAULT_BASELINE_DIR / "markov_chain_online_profile_2026-01-01_2026-06-21.csv"
 DEFAULT_REPORT_PATH = PROJECT_ROOT / "version" / "model_report.html"
 DEFAULT_TICKERS = ("IBM", "NVDA", "GM", "BLK", "COST")
 DEFAULT_INITIAL_CAPITAL = 100000.0
@@ -192,6 +195,55 @@ def build_strategy_notes(summary: ModelStrategySummary) -> list[str]:
     return notes
 
 
+def compare_named_model_profiles(
+    profile_specs: Sequence[tuple[str, str | Path]],
+    tickers: Sequence[str] = DEFAULT_TICKERS,
+    initial_capital: float = DEFAULT_INITIAL_CAPITAL,
+    currency: str = DEFAULT_CURRENCY,
+) -> dict[str, Any]:
+    """Load named profile CSVs and return side-by-side explanation data."""
+
+    summaries = [
+        summarize_strategy(
+            load_profile(profile_path),
+            model_name,
+            profile_path,
+            tickers=tickers,
+            initial_capital=initial_capital,
+            currency=currency,
+        )
+        for model_name, profile_path in profile_specs
+    ]
+    summary_by_name = {summary.model_name: summary for summary in summaries}
+
+    difference = {}
+    if "Only-DDPG" in summary_by_name and "DDPG+SLM" in summary_by_name:
+        only_summary = summary_by_name["Only-DDPG"]
+        slm_summary = summary_by_name["DDPG+SLM"]
+        difference = {
+            "profit_loss": round(slm_summary.profit_loss - only_summary.profit_loss, 2),
+            "final_investment_value": round(
+                slm_summary.final_investment_value - only_summary.final_investment_value,
+                2,
+            ),
+            "cumulative_return": slm_summary.cumulative_return - only_summary.cumulative_return,
+            "max_drawdown": slm_summary.max_drawdown - only_summary.max_drawdown,
+            "mean_daily_return": slm_summary.mean_daily_return - only_summary.mean_daily_return,
+        }
+
+    return {
+        "initial_capital": float(initial_capital),
+        "currency": currency,
+        "tickers": list(tickers),
+        "models": [asdict(summary) for summary in summaries],
+        "strategy_notes": {
+            summary.model_name: build_strategy_notes(summary)
+            for summary in summaries
+        },
+        "difference_ddpg_slm_minus_only_ddpg": difference,
+    }
+
+
 def compare_model_profiles(
     only_ddpg_profile: str | Path = DEFAULT_ONLY_DDPG_PROFILE,
     ddpg_slm_profile: str | Path = DEFAULT_DDPG_SLM_PROFILE,
@@ -199,46 +251,38 @@ def compare_model_profiles(
     initial_capital: float = DEFAULT_INITIAL_CAPITAL,
     currency: str = DEFAULT_CURRENCY,
 ) -> dict[str, Any]:
-    """Load both profile CSVs and return side-by-side explanation data."""
+    """Load Only-DDPG and DDPG+SLM profiles and return side-by-side data."""
 
-    only_profile = load_profile(only_ddpg_profile)
-    slm_profile = load_profile(ddpg_slm_profile)
-    only_summary = summarize_strategy(
-        only_profile,
-        "Only-DDPG",
-        only_ddpg_profile,
-        tickers=tickers,
-        initial_capital=initial_capital,
-        currency=currency,
-    )
-    slm_summary = summarize_strategy(
-        slm_profile,
-        "DDPG+SLM",
-        ddpg_slm_profile,
+    return compare_named_model_profiles(
+        [
+            ("Only-DDPG", only_ddpg_profile),
+            ("DDPG+SLM", ddpg_slm_profile),
+        ],
         tickers=tickers,
         initial_capital=initial_capital,
         currency=currency,
     )
 
-    difference = {
-        "profit_loss": round(slm_summary.profit_loss - only_summary.profit_loss, 2),
-        "final_investment_value": round(
-            slm_summary.final_investment_value - only_summary.final_investment_value,
-            2,
-        ),
-        "cumulative_return": slm_summary.cumulative_return - only_summary.cumulative_return,
-        "max_drawdown": slm_summary.max_drawdown - only_summary.max_drawdown,
-        "mean_daily_return": slm_summary.mean_daily_return - only_summary.mean_daily_return,
-    }
 
-    return {
-        "initial_capital": float(initial_capital),
-        "currency": currency,
-        "tickers": list(tickers),
-        "models": [asdict(only_summary), asdict(slm_summary)],
-        "strategy_notes": {
-            only_summary.model_name: build_strategy_notes(only_summary),
-            slm_summary.model_name: build_strategy_notes(slm_summary),
-        },
-        "difference_ddpg_slm_minus_only_ddpg": difference,
-    }
+def compare_four_pipeline_profiles(
+    only_ddpg_profile: str | Path = DEFAULT_ONLY_DDPG_PROFILE,
+    ddpg_slm_profile: str | Path = DEFAULT_DDPG_SLM_PROFILE,
+    buy_hold_profile: str | Path = DEFAULT_BUY_HOLD_PROFILE,
+    markov_profile: str | Path = DEFAULT_MARKOV_CHAIN_PROFILE,
+    tickers: Sequence[str] = DEFAULT_TICKERS,
+    initial_capital: float = DEFAULT_INITIAL_CAPITAL,
+    currency: str = DEFAULT_CURRENCY,
+) -> dict[str, Any]:
+    """Load DDPG, SLM, and baseline profiles for the four-pipeline report."""
+
+    return compare_named_model_profiles(
+        [
+            ("Only-DDPG", only_ddpg_profile),
+            ("DDPG+SLM", ddpg_slm_profile),
+            ("Buy-and-Hold", buy_hold_profile),
+            ("Markov Chain", markov_profile),
+        ],
+        tickers=tickers,
+        initial_capital=initial_capital,
+        currency=currency,
+    )

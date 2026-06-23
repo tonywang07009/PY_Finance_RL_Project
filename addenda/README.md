@@ -47,9 +47,12 @@ flowchart TB
 | `result_profile_comparse/only_ddpg_online_profile_2026-01-01_2026-06-21.csv` | Store step-level online profile for Only-DDPG. |
 | `result_profile_comparse/ddpg_slm_online_profile_2026-01-01_2026-06-21.csv` | Store step-level online profile for DDPG+SLM. |
 | `result_profile_comparse/ddpg_vs_slm_comparison_2026-01-01_2026-06-21.csv` | Store mean return, standard deviation, and reward comparison summary. |
-| `result_picture/comparison/daily_return_overlay_2026-01-01_2026-06-21.png` | Store both model daily returns in one figure with a shared y-axis. |
-| `result_picture/comparison/daily_return_normal_distribution_2026-01-01_2026-06-21.png` | Store overlaid normal curves with a shared mean. |
-| `result_picture/comparison/daily_return_boxplot_2026-01-01_2026-06-21.png` | Store both model daily-return boxplots in one figure. |
+| `result_base_line/buy_hold_online_profile_2026-01-01_2026-06-21.csv` | Store step-level online profile for the fixed-share Buy-and-Hold baseline. |
+| `result_base_line/markov_chain_online_profile_2026-01-01_2026-06-21.csv` | Store step-level online profile for the three-day Markov Chain baseline. |
+| `result_base_line/four_pipeline_comparison_2026-01-01_2026-06-21.csv` | Store summary metrics for Only-DDPG, DDPG+SLM, Buy-and-Hold, and Markov Chain. |
+| `result_picture/comparison/daily_return_overlay_2026-01-01_2026-06-21.png` | Store all four daily-return series in one figure with a shared y-axis. |
+| `result_picture/comparison/daily_return_normal_distribution_2026-01-01_2026-06-21.png` | Store four-pipeline daily-return normal curves with a shared mean. |
+| `result_picture/comparison/daily_return_boxplot_2026-01-01_2026-06-21.png` | Store four-pipeline daily-return boxplots in one figure. |
 | `synthetic_sentiment/balanced_rss_sentiment_2011-01-01_2025-12-31.csv` | Store balanced synthetic sentiment used for 62D SLM-aware training. |
 
 ## Common Checks

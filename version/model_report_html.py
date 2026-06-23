@@ -8,10 +8,13 @@ from typing import Any
 
 from .model_explainer import (
     DEFAULT_CURRENCY,
+    DEFAULT_BUY_HOLD_PROFILE,
     DEFAULT_DDPG_SLM_PROFILE,
     DEFAULT_INITIAL_CAPITAL,
+    DEFAULT_MARKOV_CHAIN_PROFILE,
     DEFAULT_ONLY_DDPG_PROFILE,
     DEFAULT_REPORT_PATH,
+    compare_four_pipeline_profiles,
     compare_model_profiles,
 )
 
@@ -82,6 +85,12 @@ def _weight_table(models: list[dict[str, Any]], tickers: list[str]) -> str:
     return "\n".join(rows)
 
 
+def _weight_table_headers(models: list[dict[str, Any]]) -> str:
+    cells = ["<th>Ticker</th>"]
+    cells.extend(f"<th>{escape(model['model_name'])}</th>" for model in models)
+    return "".join(cells)
+
+
 def _strategy_notes(strategy_notes: dict[str, list[str]]) -> str:
     blocks = []
     for model_name, notes in strategy_notes.items():
@@ -104,7 +113,16 @@ def generate_dashboard_html(report: dict[str, Any]) -> str:
     models = list(report["models"])
     tickers = list(report["tickers"])
     difference = dict(report["difference_ddpg_slm_minus_only_ddpg"])
-    diff_css = "pos" if difference["profit_loss"] >= 0.0 else "neg"
+    has_ddpg_diff = bool(difference)
+    diff_css = "pos" if has_ddpg_diff and difference["profit_loss"] >= 0.0 else "neg"
+    diff_block = ""
+    if has_ddpg_diff:
+        diff_block = f"""
+    <div class="diff">
+      DDPG+SLM minus Only-DDPG profit/loss:
+      <span class="{diff_css}">{escape(format_money(difference["profit_loss"], currency))}</span>
+    </div>
+"""
 
     return f"""<!doctype html>
 <html lang="en">
@@ -204,17 +222,14 @@ def generate_dashboard_html(report: dict[str, Any]) -> str:
 <body>
   <header>
     <h1>DDPG MODEL EXPLANATION DASHBOARD</h1>
-    <div class="terminal-line">DATA: result_profile_comparse | CAPITAL: {escape(format_money(report["initial_capital"], currency))}</div>
+    <div class="terminal-line">DATA: result_profile_comparse + result_base_line | CAPITAL: {escape(format_money(report["initial_capital"], currency))}</div>
   </header>
   <main>
     <div class="grid">
       {_summary_cards(models, currency)}
     </div>
 
-    <div class="diff">
-      DDPG+SLM minus Only-DDPG profit/loss:
-      <span class="{diff_css}">{escape(format_money(difference["profit_loss"], currency))}</span>
-    </div>
+    {diff_block}
 
     <section class="section panel">
       <h2>Capital and Profit / Loss</h2>
@@ -240,11 +255,7 @@ def generate_dashboard_html(report: dict[str, Any]) -> str:
       <h2>Average Portfolio Weights</h2>
       <table>
         <thead>
-          <tr>
-            <th>Ticker</th>
-            <th>Only-DDPG</th>
-            <th>DDPG+SLM</th>
-          </tr>
+          <tr>{_weight_table_headers(models)}</tr>
         </thead>
         <tbody>{_weight_table(models, tickers)}</tbody>
       </table>
@@ -283,6 +294,28 @@ def build_dashboard_report(
     report = compare_model_profiles(
         only_ddpg_profile=only_ddpg_profile,
         ddpg_slm_profile=ddpg_slm_profile,
+        initial_capital=initial_capital,
+        currency=currency,
+    )
+    return write_dashboard_html(report, output_path)
+
+
+def build_four_pipeline_dashboard_report(
+    only_ddpg_profile: str | Path = DEFAULT_ONLY_DDPG_PROFILE,
+    ddpg_slm_profile: str | Path = DEFAULT_DDPG_SLM_PROFILE,
+    buy_hold_profile: str | Path = DEFAULT_BUY_HOLD_PROFILE,
+    markov_profile: str | Path = DEFAULT_MARKOV_CHAIN_PROFILE,
+    output_path: str | Path = DEFAULT_REPORT_PATH,
+    initial_capital: float = DEFAULT_INITIAL_CAPITAL,
+    currency: str = DEFAULT_CURRENCY,
+) -> Path:
+    """Build four-pipeline explanation data and write the HTML report."""
+
+    report = compare_four_pipeline_profiles(
+        only_ddpg_profile=only_ddpg_profile,
+        ddpg_slm_profile=ddpg_slm_profile,
+        buy_hold_profile=buy_hold_profile,
+        markov_profile=markov_profile,
         initial_capital=initial_capital,
         currency=currency,
     )

@@ -127,17 +127,24 @@ flowchart TB
 | `online_daily_return_plot_filename()` | Build the standard standalone daily-return plot filename. |
 | `distribution_plot_filename()` | Build the normal-distribution comparison plot filename. |
 | `box_plot_filename()` | Build the daily-return boxplot filename. |
+| `four_pipeline_comparison_filename()` | Build the four-pipeline comparison CSV filename. |
 | `default_profile_path()` | Resolve the default path for one profile CSV. |
+| `default_four_pipeline_profile_paths()` | Resolve default profile paths for Only-DDPG, DDPG+SLM, Buy-and-Hold, and Markov Chain. |
 | `load_profile()` | Load a profile CSV and validate required columns. |
 | `compute_profile_metrics()` | Compute mean return, reward, standard deviation, and total return. |
+| `compare_named_profiles()` | Compare any named set of profile dataframes. |
 | `compare_profiles()` | Compare Only-DDPG and DDPG+SLM profile metrics. |
 | `write_comparison()` | Write comparison table to CSV. |
 | `compute_shared_ylim()` | Build one y-axis range that covers both daily-return series. |
 | `plot_daily_return_overlay()` | Save Only-DDPG and DDPG+SLM daily returns in one shared-y-axis figure. |
+| `plot_named_daily_return_overlay()` | Save named multi-profile daily returns, including baselines, in one shared-y-axis figure. |
 | `plot_aligned_individual_daily_returns()` | Refresh standalone Only-DDPG and DDPG+SLM daily-return plots with shared y-axis limits. |
 | `plot_profile_distribution()` | Save overlaid normal curves using one shared mean and each model's own standard deviation. |
 | `plot_profile_boxplot()` | Save one boxplot figure containing both model daily-return distributions. |
+| `plot_named_profile_distribution()` | Save normal curves for a named multi-profile set. |
+| `plot_named_profile_boxplot()` | Save boxplots for a named multi-profile set. |
 | `plot_profile_differences()` | Save reward and daily-return difference plot. |
+| `write_four_pipeline_outputs()` | Write four-pipeline summary, daily-return overlay, normal distribution plot, and boxplot. |
 | `parse_args()` | Parse command-line arguments for the comparison tool. |
 | `main()` | Run the comparison tool and create the CSV plus all comparison plots. |
 

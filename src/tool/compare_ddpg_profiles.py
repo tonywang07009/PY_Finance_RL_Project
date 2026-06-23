@@ -14,9 +14,16 @@ import pandas as pd
 DEFAULT_START = "2026-01-01"
 DEFAULT_END = "2026-06-21"
 DEFAULT_PROFILE_DIR = Path("addenda/result_profile_comparse")
+DEFAULT_BASELINE_DIR = Path("addenda/result_base_line")
 DEFAULT_RESULT_PICTURE_DIR = Path("addenda/result_picture")
 DEFAULT_COMPARISON_PICTURE_DIR = Path("addenda/result_picture/comparison")
 REQUIRED_COLUMNS = ("wealth", "reward", "drawdown", "daily_return")
+DEFAULT_PIPELINE_LABELS = {
+    "only_ddpg": "Only-DDPG",
+    "ddpg_slm": "DDPG+SLM",
+    "buy_hold": "Buy-and-Hold",
+    "markov_chain": "Markov Chain",
+}
 
 
 @dataclass(frozen=True)
@@ -40,6 +47,10 @@ def comparison_filename(start_date: str = DEFAULT_START, end_date: str = DEFAULT
 
 def comparison_plot_filename(start_date: str = DEFAULT_START, end_date: str = DEFAULT_END) -> str:
     return f"reward_daily_return_difference_{start_date}_{end_date}.png"
+
+
+def four_pipeline_comparison_filename(start_date: str = DEFAULT_START, end_date: str = DEFAULT_END) -> str:
+    return f"four_pipeline_comparison_{start_date}_{end_date}.csv"
 
 
 def aligned_daily_return_plot_filename(start_date: str = DEFAULT_START, end_date: str = DEFAULT_END) -> str:
@@ -69,6 +80,20 @@ def default_profile_path(
     profile_dir: Path = DEFAULT_PROFILE_DIR,
 ) -> Path:
     return profile_dir / profile_filename(profile_name, start_date, end_date)
+
+
+def default_four_pipeline_profile_paths(
+    start_date: str = DEFAULT_START,
+    end_date: str = DEFAULT_END,
+    profile_dir: Path = DEFAULT_PROFILE_DIR,
+    baseline_dir: Path = DEFAULT_BASELINE_DIR,
+) -> dict[str, Path]:
+    return {
+        "only_ddpg": default_profile_path("only_ddpg", start_date, end_date, profile_dir),
+        "ddpg_slm": default_profile_path("ddpg_slm", start_date, end_date, profile_dir),
+        "buy_hold": default_profile_path("buy_hold", start_date, end_date, baseline_dir),
+        "markov_chain": default_profile_path("markov_chain", start_date, end_date, baseline_dir),
+    }
 
 
 def load_profile(path: str | Path) -> pd.DataFrame:
@@ -115,6 +140,14 @@ def compute_profile_metrics(df: pd.DataFrame, pipeline: str) -> ProfileMetrics:
         max_drawdown=max_drawdown,
         sharpe_like_daily_return=float(sharpe_like),
     )
+
+
+def compare_named_profiles(named_profiles: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    rows = [
+        asdict(compute_profile_metrics(profile, pipeline))
+        for pipeline, profile in named_profiles.items()
+    ]
+    return pd.DataFrame(rows)
 
 
 def compare_profiles(only_ddpg: pd.DataFrame, ddpg_slm: pd.DataFrame) -> pd.DataFrame:
@@ -210,6 +243,42 @@ def plot_daily_return_overlay(
     return path
 
 
+def plot_named_daily_return_overlay(
+    named_profiles: dict[str, pd.DataFrame],
+    output_path: str | Path,
+    labels: dict[str, str] | None = None,
+    title: str = "Daily Return Overlay with Shared Y-axis",
+) -> Path:
+    profile_returns = {
+        name: _daily_returns(profile)
+        for name, profile in named_profiles.items()
+    }
+    empty_names = [name for name, returns in profile_returns.items() if returns.empty]
+    if empty_names:
+        raise ValueError(f"Cannot plot daily return overlay because profiles have no daily_return data: {empty_names}")
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    y_min, y_max = compute_shared_ylim(tuple(profile_returns.values()), center=0.0)
+    label_map = labels or DEFAULT_PIPELINE_LABELS
+
+    fig, ax = plt.subplots(figsize=(11, 4.5))
+    for name, returns in profile_returns.items():
+        ax.plot(returns.index, returns, label=f"{label_map.get(name, name)} daily return", linewidth=1.5)
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_ylim(y_min, y_max)
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Daily return")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True)
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
 def _plot_single_daily_return(
     df: pd.DataFrame,
     output_path: str | Path,
@@ -268,6 +337,99 @@ def _normal_density(x_values: np.ndarray, mean: float, std: float) -> np.ndarray
     coefficient = 1.0 / (safe_std * np.sqrt(2.0 * np.pi))
     exponent = -0.5 * ((x_values - mean) / safe_std) ** 2
     return coefficient * np.exp(exponent)
+
+
+def plot_named_profile_distribution(
+    named_profiles: dict[str, pd.DataFrame],
+    output_path: str | Path,
+    labels: dict[str, str] | None = None,
+    title: str = "Daily Return Normal Distribution Comparison",
+) -> Path:
+    profile_returns = {
+        name: _daily_returns(profile)
+        for name, profile in named_profiles.items()
+    }
+    empty_names = [name for name, returns in profile_returns.items() if returns.empty]
+    if empty_names:
+        raise ValueError(f"Cannot plot normal distribution because profiles have no daily_return data: {empty_names}")
+
+    combined = pd.concat(profile_returns.values())
+    shared_mean = float(combined.mean())
+    std_by_name = {
+        name: float(returns.std(ddof=1)) if len(returns) > 1 else 0.0
+        for name, returns in profile_returns.items()
+    }
+    max_std = max([*std_by_name.values(), 1e-6])
+
+    x_min = min(float(combined.min()), shared_mean - 4.0 * max_std)
+    x_max = max(float(combined.max()), shared_mean + 4.0 * max_std)
+    if x_min == x_max:
+        x_min -= 0.01
+        x_max += 0.01
+    x_values = np.linspace(x_min, x_max, 400)
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    label_map = labels or DEFAULT_PIPELINE_LABELS
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for name, std in std_by_name.items():
+        display_name = label_map.get(name, name)
+        ax.plot(
+            x_values,
+            _normal_density(x_values, shared_mean, std),
+            label=f"{display_name} normal curve (std={std:.6f})",
+            linewidth=2.0,
+        )
+    ax.axvline(shared_mean, color="black", linewidth=0.9, linestyle="--", label=f"Shared mean={shared_mean:.6f}")
+    ax.set_xlabel("Daily return")
+    ax.set_ylabel("Density")
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True)
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
+def plot_named_profile_boxplot(
+    named_profiles: dict[str, pd.DataFrame],
+    output_path: str | Path,
+    labels: dict[str, str] | None = None,
+    title: str = "Daily Return Boxplot Comparison",
+) -> Path:
+    profile_returns = {
+        name: _daily_returns(profile)
+        for name, profile in named_profiles.items()
+    }
+    empty_names = [name for name, returns in profile_returns.items() if returns.empty]
+    if empty_names:
+        raise ValueError(f"Cannot plot boxplot because profiles have no daily_return data: {empty_names}")
+
+    y_min, y_max = compute_shared_ylim(tuple(profile_returns.values()), center=0.0)
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    label_map = labels or DEFAULT_PIPELINE_LABELS
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.boxplot(
+        [returns.to_numpy(dtype=float) for returns in profile_returns.values()],
+        showmeans=True,
+    )
+    ax.set_xticks(range(1, len(profile_returns) + 1))
+    ax.set_xticklabels([label_map.get(name, name) for name in profile_returns], rotation=15, ha="right")
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_ylim(y_min, y_max)
+    ax.set_ylabel("Daily return")
+    ax.set_title(title)
+    ax.grid(True, axis="y")
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+    return path
 
 
 def plot_profile_distribution(
@@ -402,6 +564,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-date", default=DEFAULT_START)
     parser.add_argument("--end-date", default=DEFAULT_END)
     parser.add_argument("--profile-dir", type=Path, default=DEFAULT_PROFILE_DIR)
+    parser.add_argument("--baseline-dir", type=Path, default=DEFAULT_BASELINE_DIR)
     parser.add_argument("--only-ddpg-profile", type=Path)
     parser.add_argument("--ddpg-slm-profile", type=Path)
     parser.add_argument("--output", type=Path)
@@ -411,7 +574,82 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ddpg-slm-daily-return-output", type=Path)
     parser.add_argument("--distribution-output", type=Path)
     parser.add_argument("--boxplot-output", type=Path)
+    parser.add_argument("--buy-hold-profile", type=Path)
+    parser.add_argument("--markov-profile", type=Path)
+    parser.add_argument("--four-pipeline-output", type=Path)
+    parser.add_argument("--four-pipeline-overlay-output", type=Path)
+    parser.add_argument("--four-pipeline-distribution-output", type=Path)
+    parser.add_argument("--four-pipeline-boxplot-output", type=Path)
     return parser.parse_args()
+
+
+def write_four_pipeline_outputs(
+    start_date: str = DEFAULT_START,
+    end_date: str = DEFAULT_END,
+    profile_dir: str | Path = DEFAULT_PROFILE_DIR,
+    baseline_dir: str | Path = DEFAULT_BASELINE_DIR,
+    comparison_dir: str | Path = DEFAULT_COMPARISON_PICTURE_DIR,
+    only_ddpg_profile: str | Path | None = None,
+    ddpg_slm_profile: str | Path | None = None,
+    buy_hold_profile: str | Path | None = None,
+    markov_profile: str | Path | None = None,
+    summary_output: str | Path | None = None,
+    overlay_output: str | Path | None = None,
+    distribution_output: str | Path | None = None,
+    boxplot_output: str | Path | None = None,
+) -> dict[str, Path]:
+    profile_root = Path(profile_dir)
+    baseline_root = Path(baseline_dir)
+    comparison_root = Path(comparison_dir)
+    default_paths = default_four_pipeline_profile_paths(start_date, end_date, profile_root, baseline_root)
+    profile_paths = {
+        "only_ddpg": Path(only_ddpg_profile) if only_ddpg_profile is not None else default_paths["only_ddpg"],
+        "ddpg_slm": Path(ddpg_slm_profile) if ddpg_slm_profile is not None else default_paths["ddpg_slm"],
+        "buy_hold": Path(buy_hold_profile) if buy_hold_profile is not None else default_paths["buy_hold"],
+        "markov_chain": Path(markov_profile) if markov_profile is not None else default_paths["markov_chain"],
+    }
+    named_profiles = {name: load_profile(path) for name, path in profile_paths.items()}
+
+    summary_path = Path(summary_output) if summary_output is not None else (
+        baseline_root / four_pipeline_comparison_filename(start_date, end_date)
+    )
+    overlay_path = Path(overlay_output) if overlay_output is not None else (
+        comparison_root / aligned_daily_return_plot_filename(start_date, end_date)
+    )
+    distribution_path = Path(distribution_output) if distribution_output is not None else (
+        comparison_root / distribution_plot_filename(start_date, end_date)
+    )
+    boxplot_path = Path(boxplot_output) if boxplot_output is not None else (
+        comparison_root / box_plot_filename(start_date, end_date)
+    )
+
+    summary = compare_named_profiles(named_profiles)
+    saved_summary = write_comparison(summary, summary_path)
+    saved_overlay = plot_named_daily_return_overlay(
+        named_profiles,
+        overlay_path,
+        title="Four-Pipeline Daily Return Overlay with Shared Y-axis",
+    )
+    saved_distribution = plot_named_profile_distribution(
+        named_profiles,
+        distribution_path,
+        title="Four-Pipeline Daily Return Normal Distribution Comparison",
+    )
+    saved_boxplot = plot_named_profile_boxplot(
+        named_profiles,
+        boxplot_path,
+        title="Four-Pipeline Daily Return Boxplot Comparison",
+    )
+    print(f"saved four-pipeline comparison: {saved_summary}")
+    print(f"saved four-pipeline daily return overlay plot: {saved_overlay}")
+    print(f"saved daily return normal distribution plot: {saved_distribution}")
+    print(f"saved daily return boxplot: {saved_boxplot}")
+    return {
+        "four_pipeline_comparison": saved_summary,
+        "daily_return_overlay": saved_overlay,
+        "four_pipeline_distribution": saved_distribution,
+        "four_pipeline_boxplot": saved_boxplot,
+    }
 
 
 def main() -> Path:
@@ -451,21 +689,56 @@ def main() -> Path:
     boxplot_path = args.boxplot_output or (
         DEFAULT_COMPARISON_PICTURE_DIR / box_plot_filename(args.start_date, args.end_date)
     )
+    buy_hold_path = args.buy_hold_profile or default_profile_path(
+        "buy_hold",
+        args.start_date,
+        args.end_date,
+        args.baseline_dir,
+    )
+    markov_path = args.markov_profile or default_profile_path(
+        "markov_chain",
+        args.start_date,
+        args.end_date,
+        args.baseline_dir,
+    )
 
     only_profile = load_profile(only_path)
     slm_profile = load_profile(slm_path)
     summary = compare_profiles(only_profile, slm_profile)
     saved_path = write_comparison(summary, output_path)
     plot_path = plot_profile_differences(only_profile, slm_profile, plot_output_path)
-    overlay_path = plot_daily_return_overlay(only_profile, slm_profile, daily_return_overlay_path)
     only_daily_path, slm_daily_path = plot_aligned_individual_daily_returns(
         only_profile,
         slm_profile,
         only_daily_return_path,
         slm_daily_return_path,
     )
-    distribution_plot_path = plot_profile_distribution(only_profile, slm_profile, distribution_path)
-    boxplot_output_path = plot_profile_boxplot(only_profile, slm_profile, boxplot_path)
+
+    explicit_baseline_paths = args.buy_hold_profile is not None or args.markov_profile is not None
+    default_baseline_paths_ready = buy_hold_path.is_file() and markov_path.is_file()
+    if explicit_baseline_paths or default_baseline_paths_ready:
+        four_outputs = write_four_pipeline_outputs(
+            start_date=args.start_date,
+            end_date=args.end_date,
+            profile_dir=args.profile_dir,
+            baseline_dir=args.baseline_dir,
+            comparison_dir=DEFAULT_COMPARISON_PICTURE_DIR,
+            only_ddpg_profile=only_path,
+            ddpg_slm_profile=slm_path,
+            buy_hold_profile=buy_hold_path,
+            markov_profile=markov_path,
+            summary_output=args.four_pipeline_output,
+            overlay_output=args.four_pipeline_overlay_output or daily_return_overlay_path,
+            distribution_output=args.four_pipeline_distribution_output or distribution_path,
+            boxplot_output=args.four_pipeline_boxplot_output or boxplot_path,
+        )
+        overlay_path = four_outputs["daily_return_overlay"]
+        distribution_plot_path = four_outputs["four_pipeline_distribution"]
+        boxplot_output_path = four_outputs["four_pipeline_boxplot"]
+    else:
+        overlay_path = plot_daily_return_overlay(only_profile, slm_profile, daily_return_overlay_path)
+        distribution_plot_path = plot_profile_distribution(only_profile, slm_profile, distribution_path)
+        boxplot_output_path = plot_profile_boxplot(only_profile, slm_profile, boxplot_path)
     print(f"saved comparison: {saved_path}")
     print(f"saved comparison plot: {plot_path}")
     print(f"saved daily return overlay plot: {overlay_path}")

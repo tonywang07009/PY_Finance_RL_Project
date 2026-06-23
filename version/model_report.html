@@ -96,17 +96,17 @@
 <body>
   <header>
     <h1>DDPG MODEL EXPLANATION DASHBOARD</h1>
-    <div class="terminal-line">DATA: result_profile_comparse | CAPITAL: 100,000.00 USD</div>
+    <div class="terminal-line">DATA: result_profile_comparse + result_base_line | CAPITAL: 100,000.00 USD</div>
   </header>
   <main>
     <div class="grid">
       
             <section class="card">
               <div class="kicker">Only-DDPG</div>
-              <div class="big neg">-4,607.35 USD</div>
+              <div class="big neg">-4,607.38 USD</div>
               <div class="muted">Profit / Loss</div>
               <table>
-                <tr><th>Final Value</th><td>95,392.65 USD</td></tr>
+                <tr><th>Final Value</th><td>95,392.62 USD</td></tr>
                 <tr><th>Cumulative Return</th><td>-4.61%</td></tr>
                 <tr><th>Max Drawdown</th><td class="neg">21.82%</td></tr>
               </table>
@@ -115,21 +115,47 @@
 
             <section class="card">
               <div class="kicker">DDPG+SLM</div>
-              <div class="big pos">219.64 USD</div>
+              <div class="big pos">237.81 USD</div>
               <div class="muted">Profit / Loss</div>
               <table>
-                <tr><th>Final Value</th><td>100,219.64 USD</td></tr>
-                <tr><th>Cumulative Return</th><td>0.22%</td></tr>
+                <tr><th>Final Value</th><td>100,237.81 USD</td></tr>
+                <tr><th>Cumulative Return</th><td>0.24%</td></tr>
                 <tr><th>Max Drawdown</th><td class="neg">13.77%</td></tr>
+              </table>
+            </section>
+            
+
+            <section class="card">
+              <div class="kicker">Buy-and-Hold</div>
+              <div class="big pos">1,231.35 USD</div>
+              <div class="muted">Profit / Loss</div>
+              <table>
+                <tr><th>Final Value</th><td>101,231.35 USD</td></tr>
+                <tr><th>Cumulative Return</th><td>1.23%</td></tr>
+                <tr><th>Max Drawdown</th><td class="neg">12.75%</td></tr>
+              </table>
+            </section>
+            
+
+            <section class="card">
+              <div class="kicker">Markov Chain</div>
+              <div class="big pos">1,803.60 USD</div>
+              <div class="muted">Profit / Loss</div>
+              <table>
+                <tr><th>Final Value</th><td>101,803.60 USD</td></tr>
+                <tr><th>Cumulative Return</th><td>1.80%</td></tr>
+                <tr><th>Max Drawdown</th><td class="neg">12.85%</td></tr>
               </table>
             </section>
             
     </div>
 
+    
     <div class="diff">
       DDPG+SLM minus Only-DDPG profit/loss:
-      <span class="pos">4,826.99 USD</span>
+      <span class="pos">4,845.19 USD</span>
     </div>
+
 
     <section class="section panel">
       <h2>Capital and Profit / Loss</h2>
@@ -151,8 +177,8 @@
             <tr>
               <td>Only-DDPG</td>
               <td>100,000.00 USD</td>
-              <td>95,392.65 USD</td>
-              <td class="neg">-4,607.35 USD</td>
+              <td>95,392.62 USD</td>
+              <td class="neg">-4,607.38 USD</td>
               <td class="neg">-4.61%</td>
               <td class="neg">-0.03%</td>
               <td class="neg">21.82%</td>
@@ -164,12 +190,38 @@
             <tr>
               <td>DDPG+SLM</td>
               <td>100,000.00 USD</td>
-              <td>100,219.64 USD</td>
-              <td class="pos">219.64 USD</td>
-              <td class="pos">0.22%</td>
+              <td>100,237.81 USD</td>
+              <td class="pos">237.81 USD</td>
+              <td class="pos">0.24%</td>
               <td class="neg">-0.00%</td>
               <td class="neg">13.77%</td>
-              <td>12.69%</td>
+              <td>12.68%</td>
+              <td>NVDA</td>
+            </tr>
+            
+
+            <tr>
+              <td>Buy-and-Hold</td>
+              <td>100,000.00 USD</td>
+              <td>101,231.35 USD</td>
+              <td class="pos">1,231.35 USD</td>
+              <td class="pos">1.23%</td>
+              <td class="pos">0.00%</td>
+              <td class="neg">12.75%</td>
+              <td>0.68%</td>
+              <td>COST</td>
+            </tr>
+            
+
+            <tr>
+              <td>Markov Chain</td>
+              <td>100,000.00 USD</td>
+              <td>101,803.60 USD</td>
+              <td class="pos">1,803.60 USD</td>
+              <td class="pos">1.80%</td>
+              <td class="pos">0.01%</td>
+              <td class="neg">12.85%</td>
+              <td>7.90%</td>
               <td>NVDA</td>
             </tr>
             </tbody>
@@ -180,17 +232,13 @@
       <h2>Average Portfolio Weights</h2>
       <table>
         <thead>
-          <tr>
-            <th>Ticker</th>
-            <th>Only-DDPG</th>
-            <th>DDPG+SLM</th>
-          </tr>
+          <tr><th>Ticker</th><th>Only-DDPG</th><th>DDPG+SLM</th><th>Buy-and-Hold</th><th>Markov Chain</th></tr>
         </thead>
-        <tbody><tr><td>IBM</td><td>31.78%</td><td>17.66%</td></tr>
-<tr><td>NVDA</td><td>17.41%</td><td>25.43%</td></tr>
-<tr><td>GM</td><td>20.89%</td><td>20.94%</td></tr>
-<tr><td>BLK</td><td>12.15%</td><td>15.72%</td></tr>
-<tr><td>COST</td><td>17.77%</td><td>20.25%</td></tr></tbody>
+        <tbody><tr><td>IBM</td><td>31.78%</td><td>17.66%</td><td>17.85%</td><td>19.28%</td></tr>
+<tr><td>NVDA</td><td>17.41%</td><td>25.43%</td><td>20.44%</td><td>21.25%</td></tr>
+<tr><td>GM</td><td>20.89%</td><td>20.94%</td><td>19.42%</td><td>19.40%</td></tr>
+<tr><td>BLK</td><td>12.15%</td><td>15.72%</td><td>19.23%</td><td>19.09%</td></tr>
+<tr><td>COST</td><td>17.77%</td><td>20.25%</td><td>23.06%</td><td>20.98%</td></tr></tbody>
       </table>
     </section>
 
@@ -200,13 +248,25 @@
         
             <section class="panel">
               <h3>Only-DDPG Decision Notes</h3>
-              <ul><li>Only-DDPG ended with a loss of -4,607.35 USD.</li><li>The largest average allocation was IBM.</li><li>Average turnover was 47.60%, showing how much the allocation changed per step.</li><li>Max drawdown was 21.82%, which is the largest drop from a previous peak.</li></ul>
+              <ul><li>Only-DDPG ended with a loss of -4,607.38 USD.</li><li>The largest average allocation was IBM.</li><li>Average turnover was 47.60%, showing how much the allocation changed per step.</li><li>Max drawdown was 21.82%, which is the largest drop from a previous peak.</li></ul>
             </section>
             
 
             <section class="panel">
               <h3>DDPG+SLM Decision Notes</h3>
-              <ul><li>DDPG+SLM ended with a profit of 219.64 USD.</li><li>The largest average allocation was NVDA.</li><li>Average turnover was 12.69%, showing how much the allocation changed per step.</li><li>Max drawdown was 13.77%, which is the largest drop from a previous peak.</li><li>Average SLM sentiment score during the run was 0.0097.</li></ul>
+              <ul><li>DDPG+SLM ended with a profit of 237.81 USD.</li><li>The largest average allocation was NVDA.</li><li>Average turnover was 12.68%, showing how much the allocation changed per step.</li><li>Max drawdown was 13.77%, which is the largest drop from a previous peak.</li><li>Average SLM sentiment score during the run was 0.0166.</li></ul>
+            </section>
+            
+
+            <section class="panel">
+              <h3>Buy-and-Hold Decision Notes</h3>
+              <ul><li>Buy-and-Hold ended with a profit of 1,231.35 USD.</li><li>The largest average allocation was COST.</li><li>Average turnover was 0.68%, showing how much the allocation changed per step.</li><li>Max drawdown was 12.75%, which is the largest drop from a previous peak.</li></ul>
+            </section>
+            
+
+            <section class="panel">
+              <h3>Markov Chain Decision Notes</h3>
+              <ul><li>Markov Chain ended with a profit of 1,803.60 USD.</li><li>The largest average allocation was NVDA.</li><li>Average turnover was 7.90%, showing how much the allocation changed per step.</li><li>Max drawdown was 12.85%, which is the largest drop from a previous peak.</li></ul>
             </section>
             
       </div>

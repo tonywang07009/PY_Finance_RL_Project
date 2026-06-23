@@ -12,13 +12,13 @@ class RunConfig:
 
     model_id: str = "ibm-granite/granite-4.1-8b"
     tickers: tuple[str, ...] = ("IBM", "NVDA", "GM", "BLK", "COST")
-    start_date: str = "2010-11-18"
-    end_date: str = "2025-01-01"
-    train_start: str = "2011-01-01"
+    start_date: str = "2013-01-01"
+    end_date: str = "2017-12-31"
+    train_start: str = "2013-01-01"
     train_end: str = "2015-12-31"
     valid_start: str = "2016-01-01"
-    valid_end: str = "2025-12-31"
-    online_start: str = "2026-01-01"
+    valid_end: str = "2017-12-31"
+    online_start: str = "2025-01-01"
     online_end: str = "2026-06-21"
     model_path: str = "ddpg_portfolio_offline"
     slm_model_path: str = "ddpg_portfolio_slm"
@@ -28,6 +28,7 @@ class RunConfig:
     news_max_items: int = 50
     result_picture_dir: str = "addenda/result_picture"
     result_profile_dir: str = "addenda/result_profile_comparse"
+    result_baseline_dir: str = "addenda/result_base_line"
     synthetic_sentiment_dir: str = "addenda/synthetic_sentiment"
 
     @property

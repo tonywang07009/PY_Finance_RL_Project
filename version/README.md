@@ -2,7 +2,7 @@
 
 ## What Is Here
 
-- This folder explains the two online model profiles in money and strategy terms.
+- This folder explains the online model and baseline profiles in money and strategy terms.
 
 - Main outputs:
   - investment value,
@@ -24,11 +24,15 @@
 flowchart TB
     P1[__Only-DDPG Profile__<br/>wealth / reward / action / daily_return]
     P2[__DDPG+SLM Profile__<br/>wealth / reward / action / sentiment]
+    YH[__finance_rl_slm.data__<br/>YahooDownloader close prices]
+    BASE[__baseline strategies__<br/>Buy-and-Hold / Markov Chain]
     EXP[__model_explainer.py__<br/>1. capital value<br/>2. profit/loss<br/>3. normalized weights]
     HTML[__model_report_html.py__<br/>1. Bloomberg style page<br/>2. tables and strategy notes]
     SRV[__run_model_report.py__<br/>1. generate HTML<br/>2. serve localhost]
     OUT[__model_report.html__<br/>dashboard output]
 
+    YH --> BASE
+    BASE --> EXP
     P1 --> EXP
     P2 --> EXP
     EXP --> HTML
@@ -49,12 +53,15 @@ flowchart TB
 | `calculate_average_turnover()` | Measure average portfolio allocation change between steps. |
 | `summarize_strategy()` | Build one model summary with return, drawdown, capital, and allocation fields. |
 | `build_strategy_notes()` | Build short strategy explanation notes for one model. |
+| `compare_named_model_profiles()` | Load any named profile list and return side-by-side dashboard data. |
 | `compare_model_profiles()` | Load Only-DDPG and DDPG+SLM profiles and return side-by-side data. |
+| `compare_four_pipeline_profiles()` | Load Only-DDPG, DDPG+SLM, Buy-and-Hold, and Markov Chain profiles. |
 | `format_money()` | Format money values with the selected currency. |
 | `format_percent()` | Format ratio values as percentages. |
 | `generate_dashboard_html()` | Build the terminal-style dashboard HTML string. |
 | `write_dashboard_html()` | Write dashboard HTML to disk. |
 | `build_dashboard_report()` | Build comparison data and write `model_report.html`. |
+| `build_four_pipeline_dashboard_report()` | Build four-pipeline data and write `model_report.html`. |
 | `build_parser()` | Build CLI parser for the report server. |
 | `serve_report()` | Serve the generated report directory on localhost. |
 | `main()` | Generate the report and start the server unless `--no-serve` is used. |
@@ -66,6 +73,16 @@ flowchart TB
   ```bash
   python version/run_model_report.py --no-serve
   ```
+
+- Generate four-pipeline report without starting the server:
+
+  ```bash
+  python version/run_model_report.py --no-serve
+  ```
+
+  The command reads existing Buy-and-Hold and Markov Chain profile CSVs from
+  `addenda/result_base_line/`. If they do not exist yet, it generates them
+  through `src/finance_rl_slm/data.py::download_price_df()`.
 
 - Run the dashboard:
 
@@ -83,9 +100,12 @@ flowchart TB
 
 - Default capital is `100000 USD`.
 
-- The report uses existing CSV profiles.
+- The report uses existing DDPG CSV profiles.
   - It does not retrain DDPG.
   - It does not rerun online evaluation.
+
+- The report command generates missing baseline CSV profiles before writing the HTML.
+- Baseline CSVs are stored under `addenda/result_base_line/`.
 
 - The `action` column is raw model output.
   - The dashboard converts it into non-negative normalized portfolio weights before explaining strategy.

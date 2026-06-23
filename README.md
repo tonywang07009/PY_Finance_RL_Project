@@ -32,6 +32,9 @@ dimension. If the SLM route loads the wrong model, it fails clearly.
 - [Environment API](envs/README.md)
   - Portfolio environment, 61D/62D observation design, action handling, reward, and SLM sentiment injection.
 
+- [Baseline Strategies](baseline/README.md)
+  - Buy-and-Hold and three-day Markov Chain baselines for the online comparison window.
+
 - [Result Addenda](addenda/README.md)
   - Generated figures, online profile CSV files, synthetic sentiment CSV, and comparison outputs.
 
@@ -135,23 +138,49 @@ This writes:
 - `addenda/result_picture/comparison/daily_return_normal_distribution_2026-01-01_2026-06-21.png`
 - `addenda/result_picture/comparison/daily_return_boxplot_2026-01-01_2026-06-21.png`
 
+If baseline CSVs exist in `addenda/result_base_line/`, the daily-return overlay,
+normal-distribution, and boxplot figures use all four pipelines.
+
 It also refreshes both standalone daily-return plots with the same y-axis range:
 
 - `addenda/result_picture/only_ddpg/online_daily_return_only_ddpg_2026-01-01_2026-06-21.png`
 - `addenda/result_picture/with_slm/online_daily_return_ddpg_slm_2026-01-01_2026-06-21.png`
 
-### 1.5 Explain Both Models in a Local Dashboard
+### 1.5 Explain All Pipelines in a Local Dashboard
 
 ```bash
 python version/run_model_report.py
 ```
 
-This generates `version/model_report.html` and serves it on localhost.
+This generates `version/model_report.html` and serves it on localhost. The
+default dashboard includes Only-DDPG, DDPG+SLM, Buy-and-Hold, and Markov Chain.
 
 For report generation only:
 
 ```bash
 python version/run_model_report.py --no-serve
+```
+
+### 1.6 Baseline Data and Outputs
+
+```bash
+python version/run_model_report.py --no-serve
+```
+
+This generates missing baseline profiles through
+`src/finance_rl_slm/data.py::download_price_df()`, writes them to
+`addenda/result_base_line/`, refreshes the four-pipeline comparison plots, and
+updates `version/model_report.html`.
+
+Generated baseline profile outputs:
+
+- `addenda/result_base_line/buy_hold_online_profile_2026-01-01_2026-06-21.csv`
+- `addenda/result_base_line/markov_chain_online_profile_2026-01-01_2026-06-21.csv`
+
+To serve the four-pipeline dashboard on localhost:
+
+```bash
+python version/run_model_report.py
 ```
 
 ## 2. Current Data Flow
@@ -199,6 +228,9 @@ flowchart TB
 │   │   └── comparison/
 │   ├── result_profile_comparse/
 │   └── synthetic_sentiment/
+├── baseline/
+│   ├── baseline_strategies.py
+│   └── run_baselines.py
 ├── envs/
 │   └── gym_portfolio_env.py
 ├── main/

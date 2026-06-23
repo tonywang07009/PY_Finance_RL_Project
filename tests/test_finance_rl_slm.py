@@ -93,6 +93,25 @@ print("transformers" in sys.modules)
 
         self.assertEqual(result.stdout.strip(), "False")
 
+    def test_data_loader_does_not_import_finrl_top_level(self) -> None:
+        code = f"""
+import sys
+sys.path.insert(0, {str(PROJECT_ROOT / "src")!r})
+sys.path.insert(0, {str(PROJECT_ROOT)!r})
+sys.path.insert(0, {str(PROJECT_ROOT / "src" / "FinRL")!r})
+from finance_rl_slm.data import _load_yahoo_downloader_class
+_load_yahoo_downloader_class()
+print("finrl" in sys.modules)
+"""
+        result = subprocess.run(
+            [sys.executable, "-B", "-c", code],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.stdout.strip(), "False")
+
 
 if __name__ == "__main__":
     unittest.main()

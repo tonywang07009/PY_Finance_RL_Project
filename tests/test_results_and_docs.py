@@ -21,12 +21,16 @@ for path in (PROJECT_ROOT / "src", PROJECT_ROOT, PROJECT_ROOT / "src" / "FinRL")
 class ResultsAndDocsTests(unittest.TestCase):
     def test_output_contract_artifacts_exist(self) -> None:
         profile_dir = PROJECT_ROOT / "addenda" / "result_profile_comparse"
+        baseline_dir = PROJECT_ROOT / "addenda" / "result_base_line"
         picture_dir = PROJECT_ROOT / "addenda" / "result_picture"
 
         expected_profiles = [
             profile_dir / "only_ddpg_online_profile_2026-01-01_2026-06-21.csv",
             profile_dir / "ddpg_slm_online_profile_2026-01-01_2026-06-21.csv",
             profile_dir / "ddpg_vs_slm_comparison_2026-01-01_2026-06-21.csv",
+            baseline_dir / "buy_hold_online_profile_2026-01-01_2026-06-21.csv",
+            baseline_dir / "markov_chain_online_profile_2026-01-01_2026-06-21.csv",
+            baseline_dir / "four_pipeline_comparison_2026-01-01_2026-06-21.csv",
         ]
         expected_figures = [
             picture_dir / "only_ddpg" / "online_reward_only_ddpg_2026-01-01_2026-06-21.png",
@@ -45,7 +49,12 @@ class ResultsAndDocsTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(path.exists(), f"missing output contract artifact: {path}")
 
-        for path in expected_profiles[:2]:
+        for path in [
+            profile_dir / "only_ddpg_online_profile_2026-01-01_2026-06-21.csv",
+            profile_dir / "ddpg_slm_online_profile_2026-01-01_2026-06-21.csv",
+            baseline_dir / "buy_hold_online_profile_2026-01-01_2026-06-21.csv",
+            baseline_dir / "markov_chain_online_profile_2026-01-01_2026-06-21.csv",
+        ]:
             with self.subTest(profile=path):
                 df = pd.read_csv(path)
                 self.assertEqual(len(df), 115)
@@ -88,9 +97,13 @@ class ResultsAndDocsTests(unittest.TestCase):
     def test_compare_ddpg_profiles_writes_metric_difference(self) -> None:
         from tool.compare_ddpg_profiles import (
             compare_profiles,
+            compare_named_profiles,
             compute_shared_ylim,
             plot_aligned_individual_daily_returns,
             plot_daily_return_overlay,
+            plot_named_daily_return_overlay,
+            plot_named_profile_boxplot,
+            plot_named_profile_distribution,
             plot_profile_boxplot,
             plot_profile_differences,
             plot_profile_distribution,
@@ -144,6 +157,16 @@ class ResultsAndDocsTests(unittest.TestCase):
             )
             distribution_output = plot_profile_distribution(only, slm, Path(tmpdir) / "distribution.png")
             boxplot_output = plot_profile_boxplot(only, slm, Path(tmpdir) / "boxplot.png")
+            named = {
+                "only_ddpg": only,
+                "ddpg_slm": slm,
+                "buy_hold": only,
+                "markov_chain": slm,
+            }
+            named_summary = compare_named_profiles(named)
+            named_overlay = plot_named_daily_return_overlay(named, Path(tmpdir) / "named_overlay.png")
+            named_distribution = plot_named_profile_distribution(named, Path(tmpdir) / "named_distribution.png")
+            named_boxplot = plot_named_profile_boxplot(named, Path(tmpdir) / "named_boxplot.png")
             only_daily_output, slm_daily_output = plot_aligned_individual_daily_returns(
                 only,
                 slm,
@@ -153,8 +176,57 @@ class ResultsAndDocsTests(unittest.TestCase):
             self.assertTrue(overlay_output.exists())
             self.assertTrue(distribution_output.exists())
             self.assertTrue(boxplot_output.exists())
+            self.assertEqual(len(named_summary), 4)
+            self.assertTrue(named_overlay.exists())
+            self.assertTrue(named_distribution.exists())
+            self.assertTrue(named_boxplot.exists())
             self.assertTrue(only_daily_output.exists())
             self.assertTrue(slm_daily_output.exists())
+
+    def test_write_four_pipeline_outputs(self) -> None:
+        from tool.compare_ddpg_profiles import write_four_pipeline_outputs
+
+        base = pd.DataFrame(
+            {
+                "wealth": [1.0, 1.1, 1.21],
+                "reward": [0.0, 0.1, 0.1],
+                "drawdown": [0.0, 0.0, 0.0],
+                "daily_return": [np.nan, 0.1, 0.1],
+            },
+            index=pd.to_datetime(["2026-01-02", "2026-01-05", "2026-01-06"]),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            profile_paths = {}
+            for name, wealth_offset in {
+                "only_ddpg": 0.0,
+                "ddpg_slm": 0.01,
+                "buy_hold": -0.01,
+                "markov_chain": 0.02,
+            }.items():
+                df = base.copy()
+                df["wealth"] = df["wealth"] + wealth_offset
+                path = tmp_path / f"{name}.csv"
+                df.to_csv(path, index_label="time")
+                profile_paths[name] = path
+
+            outputs = write_four_pipeline_outputs(
+                profile_dir=tmp_path,
+                comparison_dir=tmp_path,
+                only_ddpg_profile=profile_paths["only_ddpg"],
+                ddpg_slm_profile=profile_paths["ddpg_slm"],
+                buy_hold_profile=profile_paths["buy_hold"],
+                markov_profile=profile_paths["markov_chain"],
+                summary_output=tmp_path / "four.csv",
+                distribution_output=tmp_path / "four_distribution.png",
+                boxplot_output=tmp_path / "four_boxplot.png",
+            )
+
+            for path in outputs.values():
+                with self.subTest(path=path):
+                    self.assertTrue(Path(path).exists())
+                    self.assertGreater(Path(path).stat().st_size, 0)
 
     def test_compare_ddpg_profiles_main_writes_all_plots(self) -> None:
         from tool.compare_ddpg_profiles import main as compare_main
@@ -186,12 +258,21 @@ class ResultsAndDocsTests(unittest.TestCase):
             slm.to_csv(slm_path, index_label="time")
 
             output = tmp_path / "comparison.csv"
+            four_output = tmp_path / "four_pipeline.csv"
             diff_output = tmp_path / "difference.png"
             overlay_output = tmp_path / "overlay.png"
             only_daily_output = tmp_path / "only_daily.png"
             slm_daily_output = tmp_path / "slm_daily.png"
             distribution_output = tmp_path / "distribution.png"
             boxplot_output = tmp_path / "boxplot.png"
+            buy_hold_path = tmp_path / "buy_hold.csv"
+            markov_path = tmp_path / "markov.csv"
+            buy_hold = only.copy()
+            buy_hold["wealth"] = buy_hold["wealth"] - 0.02
+            markov = slm.copy()
+            markov["wealth"] = markov["wealth"] + 0.02
+            buy_hold.to_csv(buy_hold_path, index_label="time")
+            markov.to_csv(markov_path, index_label="time")
             args = [
                 "compare_ddpg_profiles.py",
                 "--only-ddpg-profile",
@@ -212,6 +293,12 @@ class ResultsAndDocsTests(unittest.TestCase):
                 str(distribution_output),
                 "--boxplot-output",
                 str(boxplot_output),
+                "--buy-hold-profile",
+                str(buy_hold_path),
+                "--markov-profile",
+                str(markov_path),
+                "--four-pipeline-output",
+                str(four_output),
             ]
 
             with patch.object(sys, "argv", args):
@@ -225,11 +312,13 @@ class ResultsAndDocsTests(unittest.TestCase):
                 slm_daily_output,
                 distribution_output,
                 boxplot_output,
+                four_output,
             ]
             for path in expected_outputs:
                 with self.subTest(path=path):
                     self.assertTrue(Path(path).exists())
                     self.assertGreater(Path(path).stat().st_size, 0)
+            self.assertEqual(len(pd.read_csv(four_output)), 4)
 
     def test_standardized_notebooks_have_notes_and_no_outputs(self) -> None:
         old_notebook = PROJECT_ROOT / "main" / "main_code.ipynb"
