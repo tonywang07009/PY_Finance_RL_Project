@@ -40,19 +40,19 @@ flowchart TB
 - Generate baselines through the Web report entrypoint:
 
   ```bash
-  rtk python version/run_model_report.py --no-serve
+   python version/run_model_report.py --no-serve
   ```
 
 - Generate both baseline profiles, plots, and HTML:
 
   ```bash
-  rtk python baseline/run_baselines.py
+   python baseline/run_baselines.py
   ```
 
 - Generate only baseline profile CSVs:
 
   ```bash
-  rtk python baseline/run_baselines.py --skip-report
+   python baseline/run_baselines.py --skip-report
   ```
 
 ## Notes

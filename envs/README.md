@@ -14,22 +14,22 @@
 ## 1. Environment Flow
 
 ```mermaid
-%% {init: {"flowchart": {"defaultRenderer": "elk"}} }%%
-%% The specy elk to daraw enegine
-flowchart TB
-    PDF[__price_df__<br/>1. date by ticker table<br/>2. clean close prices]
-    CFG[__PortfolioEnvConfig__<br/>1. tickers<br/>2. observation window<br/>3. reward settings]
-    CORE[__SimplePortfolioEnv__<br/>1. wealth update<br/>2. portfolio return]
-    SENT[__sentiment_series__<br/>1. daily score<br/>2. clipped to [-1, 1]]
-    GYM[__GymPortfolioEnv__<br/>1. reset and step<br/>2. 61D or 62D observation]
-    DDPG[__DDPG Agent__<br/>1. continuous action<br/>2. portfolio weight decision]
+  %% {init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+  %% The specy elk to daraw enegine
+  flowchart TB
+      PDF[__price_df__<br/>1. date by ticker table<br/>2. clean close prices]
+      CFG[__PortfolioEnvConfig__<br/>1. tickers<br/>2. observation window<br/>3. reward settings]
+      CORE[__SimplePortfolioEnv__<br/>1. wealth update<br/>2. portfolio return]
+      SENT[__sentiment_series__<br/>1. daily score<br/>2. clipped to (-1, 1)]
+      GYM[__GymPortfolioEnv__<br/>1. reset and step<br/>2. 61D or 62D observation]
+      DDPG[__DDPG Agent__<br/>1. continuous action<br/>2. portfolio weight decision]
 
-    PDF --> CORE
-    CFG --> CORE
-    CORE --> GYM
-    SENT --> GYM
-    GYM --> DDPG
-    DDPG --> GYM
+      PDF --> CORE
+      CFG --> CORE
+      CORE --> GYM
+      SENT --> GYM
+      GYM --> DDPG
+      DDPG --> GYM
 ```
 
 ## 2. API Overview
